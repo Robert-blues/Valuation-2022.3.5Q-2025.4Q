@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>투자금융팀 평가 자산(2022.3.5Q~2025.4Q)</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    #map {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      right: 280px;
+    }
+    #sidebar {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 280px;
+      background: #ffffff;
+      border-left: 1px solid #ddd;
+      box-shadow: -2px 0 4px rgba(0,0,0,0.05);
+      padding: 10px 12px;
+      overflow-y: auto;
+      box-sizing: border-box;
+      font-size: 13px;
+    }
+    #sidebar h2 {
+      font-size: 16px;
+      margin: 4px 0 8px 0;
+    }
+    #sidebar h3 {
+      font-size: 13px;
+      margin: 10px 0 4px 0;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 2px;
+    }
+    .section {
+      margin-bottom: 10px;
+    }
+    .filter-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 2px 0;
+    }
+    .filter-left {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      border: 1px solid #888;
+    }
+    #type-list, #pool-list {
+      max-height: 150px;
+      overflow-y: auto;
+      border: 1px solid #eee;
+      padding: 4px;
+      background: #fafafa;
+    }
+    #search-input,
+    #borrower-input,
+    #type-search,
+    #pool-search,
+    #disco-input {
+      width: 100%;
+      padding: 4px;
+      font-size: 12px;
+      margin-bottom: 4px;
+      box-sizing: border-box;
+    }
+    #search-btn, #reset-btn, #borrower-btn, #disco-btn {
+      width: 100%;
+      padding: 6px;
+      font-size: 12px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      background: #f5f5f5;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    #type-all, #type-none,
+    #pool-all, #pool-none {
+      padding: 3px 5px;
+      font-size: 11px;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      background: #f5f5f5;
+      border-radius: 3px;
+    }
+    #search-btn:hover, #reset-btn:hover, #borrower-btn:hover, #disco-btn:hover,
+    #type-all:hover, #type-none:hover,
+    #pool-all:hover, #pool-none:hover {
+      background: #e9e9e9;
+    }
+    .mini-btn-row {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+    .asset-info-wrap {
+      min-width: 320px;
+      max-width: 420px;
+      max-height: 320px;
+      overflow-y: auto;
+      font-size: 11px;
+    }
+    .asset-info-wrap p {
+      margin: 2px 0;
+    }
+    .asset-info-wrap b {
+      display: inline-block;
+      min-width: 130px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<div id="sidebar">
+  <h2>투자금융팀 평가(2022.3.5Q ~ 2025.4Q)</h2>
+
+  <div class="section">
+    <button id="reset-btn">🔄 필터 초기화 (전체 보기)</button>
+  </div>
+
+  <div class="section">
+    <h3>지번 / 주소 검색</h3>
+    <input id="search-input" type="text" placeholder="예: 경기도 안산시 상록구 본오동 730-2" />
+    <button id="search-btn">현재 지도에서 검색</button>
+  </div>
+
+  <div class="section">
+    <h3>차주명 검색</h3>
+    <input id="borrower-input" type="text" placeholder="차주명 입력" />
+    <button id="borrower-btn">차주명으로 필터</button>
+  </div>
+
+  <!-- ✨ 새로운 Disco 검색 UI 추가 -->
+  <div class="section">
+    <h3>Disco 주소 검색</h3>
+    <input id="disco-input" type="text" placeholder="지번 또는 주소 입력" />
+    <button id="disco-btn">Disco에서 검색하기</button>
+    <p style="font-size:11px;color:#666;margin-top:4px;">
+      입력한 지번/주소를 <b>disco.re</b>에서 바로 검색하며,<br>검색어가 자동으로 클립보드에 복사됩니다.
+    </p>
+  </div>
+
+  <div class="section">
+    <h3>자산유형 필터</h3>
+    <input id="type-search" type="text" placeholder="자산유형 검색" />
+    <div class="mini-btn-row">
+      <button id="type-all">전체</button>
+      <button id="type-none">해제</button>
+    </div>
+    <div id="type-list"></div>
+  </div>
+
+  <div class="section">
+    <h3>Pool 필터</h3>
+    <input id="pool-search" type="text" placeholder="Pool 검색" />
+    <div class="mini-btn-row">
+      <button id="pool-all">전체</button>
+      <button id="pool-none">해제</button>
+    </div>
+    <div id="pool-list"></div>
+  </div>
+</div>
+
+<script>
+/* ========= 숫자 포맷 기능 ========= */
+function formatNumberWithCommas(value) {
+  const num = Number(value);
+  if (isNaN(num)) return value;
+  return num.toLocaleString("ko-KR");
+}
+function formatIntegerWithCommas(value) {
+  let num = Number(value);
+  if (isNaN(num)) return value;
+  return Math.round(num).toLocaleString("ko-KR");
+}
+
+/* ========= Pool 색상 ========= */
+const POOL_ICON_NAMES = ["red","blue","green","purple","yellow","ltblue","orange","pink"];
+const POOL_CSS_COLORS = ["#e74c3c","#3498db","#2ecc71","#9b59b6","#f1c40f","#1abc9c","#e67e22","#fd79a8"];
+
+let poolIndexMap = {};
+function getPoolIndex(pool) {
+  const key = pool || "기타";
+  if (poolIndexMap[key] !== undefined) return poolIndexMap[key];
+  const idx = Object.keys(poolIndexMap).length % POOL_ICON_NAMES.length;
+  poolIndexMap[key] = idx;
+  return idx;
+}
+function getPoolIconUrl(pool) {
+  return "http://maps.google.com/mapfiles/ms/icons/" +
+         POOL_ICON_NAMES[getPoolIndex(pool)] + "-dot.png";
+}
+function getPoolCssColor(pool) {
+  return POOL_CSS_COLORS[getPoolIndex(pool)];
+}
+
+/* ========= InfoWindow HTML 생성 ========= */
+function buildInfoHtml(asset) {
+  const fields = [
+    { key: "Pool", label: "Pool" },
+    { key: "대표지번", label: "대표지번" },
+    { key: "대표지번_정제", label: "대표지번_정제" },
+    { key: "차주명", label: "차주명" },
+    { key: "OPB", label: "OPB", formatNumber: true },
+    { key: "물건번호", label: "물건번호" },
+    { key: "소재지1", label: "소재지1" },
+    { key: "소재지2", label: "소재지2" },
+    { key: "소재지3", label: "소재지3" },
+    { key: "소재지4", label: "소재지4" },
+    { key: "자산유형", label: "자산유형" },
+    { key: "근저당설정순위", label: "근저당설정순위" },
+    { key: "근저당권설정액", label: "근저당권설정액", formatNumber: true },
+    { key: "대지면적(평)", label: "토지면적(평)" },
+    { key: "건물면적(평)", label: "건물면적(평)" },
+    { key: "토지", label: "토지", formatNumber: true },
+    { key: "건물", label: "건물", formatNumber: true },
+    { key: "기계기구", label: "기계기구", formatNumber: true },
+    { key: "제시외", label: "제시외", formatNumber: true },
+    { key: "합계", label: "감정평가액 합계", formatNumber: true },
+    { key: "1안 평당가액(토지+건물)", label: "1안 평당가액(토지+건물)", formatNumber: true },
+    { key: "2안 평당가액(토지+건물)", label: "2안 평당가액(토지+건물)", formatNumber: true },
+    { key: "관할법원", label: "관할법원" },
+    { key: "경매사건번호(선행기준)", label: "경매사건번호(선행기준)" },
+    { key: "회차 및 결과", label: "회차 및 결과" },
+    { key: "낙찰/매매금액", label: "낙찰/매매금액", formatNumber: true },
+    { key: "낙찰/매매금액 평당가", label: "낙찰/매매금액 평당가", formatInteger: true },
+    { key: "비고", label: "비고" },
+    { key: "회생법원", label: "회생법원" },
+    { key: "회생사건번호", label: "회생사건번호" },
+    { key: "회생진행상황", label: "회생진행상황" }
+  ];
+
+  let rows = "";
+  fields.forEach(field => {
+    let v = asset[field.key];
+    if (v === null || v === undefined) v = "";
+
+    if (field.formatNumber) v = formatNumberWithCommas(v);
+    if (field.formatInteger) v = formatIntegerWithCommas(v);
+
+    rows += `<p><b>${field.label}</b> ${v}</p>`;
+  });
+
+  return `<div class="asset-info-wrap">${rows}</div>`;
+}
+
+/* ========= 전역 상태 ========= */
+let map, geocoder, searchCircle;
+let markers = [];
+let typeVisibility = {};
+let poolVisibility = {};
+let borrowerFilter = "";
+
+/* ========= JSON 데이터 로드 ========= */
+async function loadAssets() {
+  const res = await fetch("data/assets.json");
+  return await res.json();
+}
+
+/* ========= 마커 생성 ========= */
+function createMarker(asset) {
+  if (!asset.lat || !asset.lng) return null;
+
+  const marker = new google.maps.Marker({
+    position: { lat: asset.lat, lng: asset.lng },
+    map,
+    icon: getPoolIconUrl(asset["Pool"]),
+    title: asset["대표지번_정제"] || asset["대표지번"] || ""
+  });
+
+  const iw = new google.maps.InfoWindow({ content: buildInfoHtml(asset) });
+
+  marker.addListener("click", () => iw.open(map, marker));
+
+  return marker;
+}
+
+/* ========= 필터 적용 ========= */
+function updateMarkerVisibility() {
+  const q = borrowerFilter.toLowerCase();
+
+  markers.forEach(obj => {
+    const matchType = typeVisibility[obj.typeKey] !== false;
+    const matchPool = poolVisibility[obj.poolKey] !== false;
+    let matchBorrower = true;
+
+    if (q) matchBorrower = (obj.borrowerName || "").toLowerCase().includes(q);
+
+    obj.marker.setVisible(matchType && matchPool && matchBorrower);
+  });
+}
+
+function fitMapToVisibleMarkers() {
+  const bounds = new google.maps.LatLngBounds();
+  let hasVisible = false;
+
+  markers.forEach(obj => {
+    if (obj.marker.getVisible()) {
+      bounds.extend(obj.marker.getPosition());
+      hasVisible = true;
+    }
+  });
+
+  if (hasVisible) map.fitBounds(bounds);
+}
+
+/* ========= 지도 초기화 ========= */
+async function initMap() {
+  const assets = await loadAssets();
+
+  map = new google.maps.Map(document.getElementById("map"), {
+    zoom: 7,
+    center: { lat: 36.5, lng: 127.8 }
+  });
+
+  geocoder = new google.maps.Geocoder();
+
+  const bounds = new google.maps.LatLngBounds();
+  const typeCounts = {};
+  const poolCounts = {};
+
+  assets.forEach(asset => {
+    if (!asset.lat || !asset.lng) return;
+
+    const typeKey = asset["자산유형"] || "기타";
+    const poolKey = asset["Pool"] || "미지정";
+    const borrowerName = asset["차주명"] || "";
+
+    if (!typeCounts[typeKey]) { typeCounts[typeKey] = 0; typeVisibility[typeKey] = true; }
+    if (!poolCounts[poolKey]) { poolCounts[poolKey] = 0; poolVisibility[poolKey] = true; }
+
+    typeCounts[typeKey]++;
+    poolCounts[poolKey]++;
+
+    const marker = createMarker(asset);
+    if (!marker) return;
+
+    markers.push({
+      marker,
+      typeKey,
+      poolKey,
+      borrowerName,
+      asset
+    });
+
+    bounds.extend(marker.getPosition());
+  });
+
+  map.fitBounds(bounds);
+
+  renderTypeFilters(typeCounts);
+  renderPoolFilters(poolCounts);
+
+  setupTypeFilterUI();
+  setupPoolFilterUI();
+  setupSearchBox();
+  setupBorrowerBox();
+  setupDiscoSearchBox();  // ✨ 여기 추가됨!
+  setupResetButton();
+}
+
+/* ========= Disco 검색 기능 + 클립보드 복사 ========= */
+function setupDiscoSearchBox() {
+  const input = document.getElementById("disco-input");
+  const btn = document.getElementById("disco-btn");
+
+  function searchDisco() {
+    const q = input.value.trim();
+    if (!q) {
+      alert("검색할 지번 또는 주소를 입력하세요.");
+      return;
+    }
+
+    // 자동 클립보드 복사
+    navigator.clipboard.writeText(q).then(() => {
+      console.log("클립보드 복사 완료:", q);
+    });
+
+    const url = `https://disco.re/search?keyword=${encodeURIComponent(q)}`;
+
+    // 새 탭에서 Disco 검색 실행
+    window.open(url, "_blank");
+  }
+
+  btn.addEventListener("click", searchDisco);
+  input.addEventListener("keyup", e => {
+    if (e.key === "Enter") searchDisco();
+  });
+}
+
+/* ========= 자산유형 필터 렌더링 ========= */
+function renderTypeFilters(typeCounts) {
+  const list = document.getElementById("type-list");
+  list.innerHTML = "";
+
+  Object.entries(typeCounts)
+    .sort((a, b) => b[1] - a[1])
+    .forEach(([key, count]) => {
+      const row = document.createElement("div");
+      row.className = "filter-item";
+
+      const left = document.createElement("div");
+      left.className = "filter-left";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = true;
+      checkbox.setAttribute("data-type", key);
+
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.backgroundColor = "#888";
+
+      const label = document.createElement("span");
+      label.textContent = key;
+
+      left.appendChild(checkbox);
+      left.appendChild(dot);
+      left.appendChild(label);
+
+      const countSpan = document.createElement("span");
+      countSpan.textContent = count + "건";
+
+      row.appendChild(left);
+      row.appendChild(countSpan);
+
+      list.appendChild(row);
+
+      checkbox.addEventListener("change", function () {
+        typeVisibility[key] = this.checked;
+        updateMarkerVisibility();
+        fitMapToVisibleMarkers();
+      });
+    });
+}
+
+/* ========= Pool 필터 렌더링 ========= */
+function renderPoolFilters(poolCounts) {
+  const list = document.getElementById("pool-list");
+  list.innerHTML = "";
+
+  Object.entries(poolCounts)
+    .sort((a, b) => b[1] - a[1])
+    .forEach(([key, count]) => {
+      const row = document.createElement("div");
+      row.className = "filter-item";
+
+      const left = document.createElement("div");
+      left.className = "filter-left";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = true;
+      checkbox.setAttribute("data-pool", key);
+
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.backgroundColor = getPoolCssColor(key);
+
+      const label = document.createElement("span");
+      label.textContent = key;
+
+      left.appendChild(checkbox);
+      left.appendChild(dot);
+      left.appendChild(label);
+
+      const countSpan = document.createElement("span");
+      countSpan.textContent = count + "건";
+
+      row.appendChild(left);
+      row.appendChild(countSpan);
+
+      list.appendChild(row);
+
+      checkbox.addEventListener("change", function () {
+        poolVisibility[key] = this.checked;
+        updateMarkerVisibility();
+        fitMapToVisibleMarkers();
+      });
+    });
+}
+
+/* ========= 필터 UI ========= */
+function setupTypeFilterUI() {
+  const searchInput = document.getElementById("type-search");
+  const btnAll = document.getElementById("type-all");
+  const btnNone = document.getElementById("type-none");
+  const list = document.getElementById("type-list");
+
+  searchInput.addEventListener("keyup", function () {
+    const q = this.value.toLowerCase();
+    Array.from(list.children).forEach(row => {
+      const label = row.querySelector(".filter-left span:last-child").textContent.toLowerCase();
+      row.style.display = label.includes(q) ? "" : "none";
+    });
+  });
+
+  btnAll.addEventListener("click", function () {
+    list.querySelectorAll("input[data-type]").forEach(box => {
+      box.checked = true;
+      typeVisibility[box.getAttribute("data-type")] = true;
+    });
+    updateMarkerVisibility();
+    fitMapToVisibleMarkers();
+  });
+
+  btnNone.addEventListener("click", function () {
+    list.querySelectorAll("input[data-type]").forEach(box => {
+      box.checked = false;
+      typeVisibility[box.getAttribute("data-type")] = false;
+    });
+    updateMarkerVisibility();
+    fitMapToVisibleMarkers();
+  });
+}
+
+function setupPoolFilterUI() {
+  const searchInput = document.getElementById("pool-search");
+  const btnAll = document.getElementById("pool-all");
+  const btnNone = document.getElementById("pool-none");
+  const list = document.getElementById("pool-list");
+
+  searchInput.addEventListener("keyup", function () {
+    const q = this.value.toLowerCase();
+    Array.from(list.children).forEach(row => {
+      const label = row.querySelector(".filter-left span:last-child").textContent.toLowerCase();
+      row.style.display = label.includes(q) ? "" : "none";
+    });
+  });
+
+  btnAll.addEventListener("click", function () {
+    list.querySelectorAll("input[data-pool]").forEach(box => {
+      box.checked = true;
+      poolVisibility[box.getAttribute("data-pool")] = true;
+    });
+    updateMarkerVisibility();
+    fitMapToVisibleMarkers();
+  });
+
+  btnNone.addEventListener("click", function () {
+    list.querySelectorAll("input[data-pool]").forEach(box => {
+      box.checked = false;
+      poolVisibility[box.getAttribute("data-pool")] = false;
+    });
+    updateMarkerVisibility();
+    fitMapToVisibleMarkers();
+  });
+}
+
+/* ========= 주소 / 지번 검색 ========= */
+function setupSearchBox() {
+  const input = document.getElementById("search-input");
+  const btn = document.getElementById("search-btn");
+
+  function doSearch() {
+    const q = input.value.trim();
+    if (!q) return;
+
+    geocoder.geocode({ address: q, region: "kr" }, (results, status) => {
+      if (status === "OK") {
+        const loc = results[0].geometry.location;
+
+        if (searchCircle) searchCircle.setMap(null);
+
+        searchCircle = new google.maps.Circle({
+          map,
+          center: loc,
+          radius: 1000,
+          fillColor: "#4285F4",
+          fillOpacity: 0.18,
+          strokeColor: "#4285F4",
+          strokeOpacity: 0.9,
+          strokeWeight: 1
+        });
+
+        map.fitBounds(searchCircle.getBounds());
+      } else {
+        alert("주소를 찾을 수 없습니다.");
+      }
+    });
+  }
+
+  btn.addEventListener("click", doSearch);
+  input.addEventListener("keyup", e => {
+    if (e.key === "Enter") doSearch();
+  });
+}
+
+/* ========= 차주명 검색 ========= */
+function setupBorrowerBox() {
+  const input = document.getElementById("borrower-input");
+  const btn = document.getElementById("borrower-btn");
+
+  function apply() {
+    borrowerFilter = input.value.trim();
+    updateMarkerVisibility();
+    fitMapToVisibleMarkers();
+  }
+
+  btn.addEventListener("click", apply);
+  input.addEventListener("keyup", e => {
+    if (e.key === "Enter") apply();
+  });
+}
+
+/* ========= 필터 초기화 ========= */
+function setupResetButton() {
+  const btn = document.getElementById("reset-btn");
+
+  btn.addEventListener("click", () => {
+    borrowerFilter = "";
+
+    Object.keys(typeVisibility).forEach(k => typeVisibility[k] = true);
+    Object.keys(poolVisibility).forEach(k => poolVisibility[k] = true);
+
+    document.querySelectorAll("input[data-type], input[data-pool]").forEach(box => box.checked = true);
+
+    document.getElementById("type-search").value = "";
+    document.getElementById("pool-search").value = "";
+    document.getElementById("search-input").value = "";
+    document.getElementById("borrower-input").value = "";
+    document.getElementById("disco-input").value = "";
+
+    ["type-list","pool-list"].forEach(id => {
+      Array.from(document.getElementById(id).children).forEach(row => row.style.display = "");
+    });
+
+    if (searchCircle) {
+      searchCircle.setMap(null);
+      searchCircle = null;
+    }
+
+    updateMarkerVisibility();
+    fitMapToVisibleMarkers();
+  });
+}
+</script>
+
+<!-- 🔑 여기에 본인의 Google Maps API Key 입력 -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBFiReDrisaJOYbq7gyZ66JJ1cBSar83vQ&callback=initMap" async defer></script>
+
+</body>
+</html>
