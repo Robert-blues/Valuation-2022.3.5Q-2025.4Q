@@ -106,9 +106,6 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    // =========================
-    // 숫자/텍스트 유틸
-    // =========================
     function toNumber(v) {
       if (v === null || v === undefined) return NaN;
       if (typeof v === "number") return v;
@@ -134,22 +131,20 @@
       return String(v);
     }
 
-    // ✅ 핵심: 키가 달라도 값을 찾아오는 fallback
+    // ✅ 키가 달라도 값을 찾아오는 fallback
     function pickAny(asset, keys) {
       for (const k of keys) {
-        if (asset.hasOwnProperty(k) && asset[k] !== null && asset[k] !== undefined && String(asset[k]).trim() !== "") {
+        if (Object.prototype.hasOwnProperty.call(asset, k) && asset[k] !== null && asset[k] !== undefined && String(asset[k]).trim() !== "") {
           return asset[k];
         }
       }
       return null;
     }
 
-    // =========================
-    // Pool 색상/아이콘 (기본 마커: 빠름)
-    // =========================
+    // Pool 색상/아이콘(기본 마커: 빠름)
     const POOL_ICON_NAMES = ["red","blue","green","purple","yellow","ltblue","orange","pink"];
     const POOL_CSS_COLORS = ["#e74c3c","#3498db","#2ecc71","#9b59b6","#f1c40f","#1abc9c","#e67e22","#fd79a8"];
-    const poolIndexMap = {}; // pool -> index
+    const poolIndexMap = {};
 
     function getPoolIndex(pool) {
       const key = pool || "미지정";
@@ -169,20 +164,13 @@
       return POOL_CSS_COLORS[idx];
     }
 
-    // =========================
-    // 전역 상태
-    // =========================
     let map, geocoder, searchCircle;
-    let markers = []; // { marker, typeKey, poolKey, borrowerName }
+    let markers = [];
     let typeVisibility = {};
     let poolVisibility = {};
     let borrowerFilter = "";
 
-    // =========================
-    // InfoWindow 표시 순서
-    // (요청사항: 토지/건물/기계기구/제시외 라벨을 감정평가액_*로 변경)
-    // + 토지값이 안보이는 문제 해결을 위해 키 fallback 적용
-    // =========================
+    // ✅ 토지면적(평) 표시: (평) 컬럼명이 오타/변형이어도 잡히게 pick 적용
     const INFO_FIELDS = [
       { key: "Pool", label: "Pool" },
       { key: "대표지번", label: "대표지번" },
@@ -197,10 +185,13 @@
       { key: "자산유형", label: "자산유형" },
       { key: "근저당설정순위", label: "근저당설정순위" },
       { key: "근저당권설정액", label: "근저당권설정액", fmt: "comma" },
-      { key: "토지면적(평)", label: "토지면적(평)" },
+
+      // ✅ 여기! 토지면적(평)이 안 뜨던 문제 해결
+      { key: "__land_area_pyeong", label: "토지면적(평)",
+        pick: (a) => pickAny(a, ["토지면적(평)", "토지면젹(평)", "토지면적", "토지면젹"]) },
+
       { key: "건물면적(평)", label: "건물면적(평)" },
 
-      // ✅ 여기 4개가 이번 수정 포인트 (라벨 + 값 fallback)
       { key: "__land_appraisal", label: "감정평가액_토지", fmt: "comma",
         pick: (a) => pickAny(a, ["감정평가액_토지","감정평가액-토지","감정평가액-대지","토지","감정평가액-대지(토지)"]) },
 
@@ -230,11 +221,7 @@
     function buildInfoHtml(asset) {
       let rows = "";
       for (const f of INFO_FIELDS) {
-        let v;
-
-        // ✅ pick 함수가 있으면 그걸 우선 사용
-        if (typeof f.pick === "function") v = f.pick(asset);
-        else v = asset[f.key];
+        let v = (typeof f.pick === "function") ? f.pick(asset) : asset[f.key];
 
         if (f.fmt === "comma") v = fmtComma(v);
         else if (f.fmt === "intcomma") v = fmtIntegerComma(v);
@@ -245,18 +232,12 @@
       return `<div class="iw-wrap">${rows}</div>`;
     }
 
-    // =========================
-    // 데이터 로드
-    // =========================
     async function loadAssets() {
       const res = await fetch("data/assets.json", { cache: "no-store" });
       if (!res.ok) throw new Error("assets.json 로드 실패: " + res.status);
       return await res.json();
     }
 
-    // =========================
-    // 마커 가시성 / 범위
-    // =========================
     function updateMarkerVisibility() {
       const q = (borrowerFilter || "").toLowerCase();
       for (const obj of markers) {
@@ -284,9 +265,6 @@
       if (any) map.fitBounds(bounds);
     }
 
-    // =========================
-    // 리스트 렌더링
-    // =========================
     function renderFilterList(containerId, counts, visibilityMap, colorFn, dataAttrName) {
       const el = document.getElementById(containerId);
       el.innerHTML = "";
@@ -362,9 +340,6 @@
       fitMapToVisibleMarkers();
     }
 
-    // =========================
-    // 토스트
-    // =========================
     function showToast(msg) {
       const el = document.getElementById("toast");
       el.textContent = msg;
@@ -372,9 +347,6 @@
       setTimeout(() => el.classList.remove("show"), 1500);
     }
 
-    // =========================
-    // UI 이벤트
-    // =========================
     function setupSearchBox() {
       const input = document.getElementById("search-input");
       const btn = document.getElementById("search-btn");
@@ -387,7 +359,6 @@
         geocoder.geocode({ address: q, region: "kr" }, (results, status) => {
           if (status === "OK" && results && results.length) {
             const loc = results[0].geometry.location;
-
             if (searchCircle) searchCircle.setMap(null);
             searchCircle = new google.maps.Circle({
               map,
@@ -399,7 +370,6 @@
               strokeOpacity: 0.85,
               strokeWeight: 1
             });
-
             map.fitBounds(searchCircle.getBounds());
           } else {
             alert("해당 주소를 찾을 수 없습니다: " + status);
@@ -437,14 +407,12 @@
           alert("검색할 지번 또는 주소를 입력하세요.");
           return;
         }
-
         try {
           await navigator.clipboard.writeText(q);
           showToast("클립보드 복사 완료 ✅");
         } catch (e) {
           alert("클립보드 복사에 실패했습니다. (브라우저 권한/HTTPS 확인)\n\n그래도 Disco 검색은 새 탭에서 열립니다.");
         }
-
         const url = "https://disco.re/search?keyword=" + encodeURIComponent(q);
         window.open(url, "_blank");
       }
@@ -459,10 +427,8 @@
 
       btn.addEventListener("click", () => {
         borrowerFilter = "";
-
         Object.keys(typeVisibility).forEach(k => typeVisibility[k] = true);
         Object.keys(poolVisibility).forEach(k => poolVisibility[k] = true);
-
         document.querySelectorAll('input[data-type], input[data-pool]').forEach(b => b.checked = true);
 
         ["type-search","pool-search","search-input","borrower-input","disco-input"].forEach(id => {
@@ -483,9 +449,6 @@
       });
     }
 
-    // =========================
-    // initMap
-    // =========================
     async function initMap() {
       const assets = await loadAssets();
 
@@ -551,7 +514,7 @@
   </script>
 
   <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCys3BT1to00AEaF0ZEFXDFDBgod9uRinw&callback=initMap"
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_JS_API_KEY&callback=initMap"
     async
     defer
   ></script>
