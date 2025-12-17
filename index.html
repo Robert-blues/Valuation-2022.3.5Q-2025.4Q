@@ -16,27 +16,31 @@
     #sidebar h3 { font-size:13px; margin:10px 0 6px 0; border-bottom:1px solid #eee; padding-bottom:4px; }
     .section { margin-bottom:10px; }
     .mini-help { font-size:11px; color:#666; margin:6px 0 0 0; line-height:1.35; }
-    input[type="text"] {
+
+    input[type="text"]{
       width:100%; box-sizing:border-box; padding:6px; font-size:12px;
       border:1px solid #ccc; border-radius:4px; margin-bottom:6px;
     }
-    button {
+    button{
       width:100%; padding:7px 8px; font-size:12px; cursor:pointer;
       border-radius:4px; border:1px solid #ccc; background:#f5f5f5;
     }
-    button:hover { background:#e9e9e9; }
-    .mini-btn-row { display:flex; gap:6px; margin-bottom:6px; }
-    .mini-btn-row button { width:auto; flex:1; padding:5px; font-size:11px; }
-    .list {
+    button:hover{ background:#e9e9e9; }
+
+    .mini-btn-row{ display:flex; gap:6px; margin-bottom:6px; }
+    .mini-btn-row button{ width:auto; flex:1; padding:5px; font-size:11px; }
+
+    .list{
       border:1px solid #eee; background:#fafafa; border-radius:4px;
       padding:6px; max-height:180px; overflow-y:auto;
     }
-    .item { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:4px 0; }
-    .left { display:flex; align-items:center; gap:6px; min-width:0; }
-    .left span.label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:165px; }
-    .count { color:#555; font-size:11px; flex:0 0 auto; }
-    .dot { width:10px; height:10px; border-radius:50%; border:1px solid rgba(0,0,0,0.35); flex:0 0 auto; }
-    .toast {
+    .item{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin:4px 0; }
+    .left{ display:flex; align-items:center; gap:6px; min-width:0; }
+    .left span.label{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:165px; }
+    .count{ color:#555; font-size:11px; flex:0 0 auto; }
+    .dot{ width:10px; height:10px; border-radius:50%; border:1px solid rgba(0,0,0,0.35); flex:0 0 auto; }
+
+    .toast{
       position:fixed; right:320px; bottom:18px;
       background:rgba(0,0,0,0.78); color:#fff;
       padding:10px 12px; border-radius:8px; font-size:12px;
@@ -44,10 +48,11 @@
       transition:opacity 0.18s ease, transform 0.18s ease;
       pointer-events:none; z-index:9999;
     }
-    .toast.show { opacity:1; transform:translateY(0); }
-    .iw-wrap { min-width:320px; max-width:460px; max-height:360px; overflow-y:auto; font-size:12px; line-height:1.35; }
-    .iw-row { margin:2px 0; }
-    .iw-row b { display:inline-block; min-width:150px; }
+    .toast.show{ opacity:1; transform:translateY(0); }
+
+    .iw-wrap{ min-width:320px; max-width:460px; max-height:360px; overflow-y:auto; font-size:12px; line-height:1.35; }
+    .iw-row{ margin:2px 0; }
+    .iw-row b{ display:inline-block; min-width:160px; }
   </style>
 </head>
 
@@ -107,83 +112,94 @@
 
   <script>
     // =========================
-    // 숫자/텍스트 유틸
+    // 유틸: 숫자/텍스트
     // =========================
-    function toNumber(v) {
+    function toNumber(v){
       if (v === null || v === undefined) return NaN;
       if (typeof v === "number") return v;
-      const s = String(v).replace(/,/g, "").trim();
+      var s = String(v).replace(/,/g, "").trim();
       if (s === "") return NaN;
       return Number(s);
     }
 
-    function fmtComma(v) {
-      const n = toNumber(v);
-      if (Number.isNaN(n)) return (v === null || v === undefined) ? "" : String(v);
+    function fmtComma(v){
+      var n = toNumber(v);
+      if (isNaN(n)) return (v === null || v === undefined) ? "" : String(v);
       return Math.round(n).toLocaleString("ko-KR");
     }
 
-    function fmtIntegerComma(v) {
-      const n = toNumber(v);
-      if (Number.isNaN(n)) return (v === null || v === undefined) ? "" : String(v);
+    function fmtIntegerComma(v){
+      var n = toNumber(v);
+      if (isNaN(n)) return (v === null || v === undefined) ? "" : String(v);
       return Math.trunc(n).toLocaleString("ko-KR");
     }
 
-    function safeText(v) {
+    function safeText(v){
       if (v === null || v === undefined) return "";
       return String(v);
     }
 
-    // ✅ 핵심: 키가 달라도 값을 찾아오는 fallback
-    function pickAny(asset, keys) {
-      for (const k of keys) {
-        if (asset.hasOwnProperty(k) && asset[k] !== null && asset[k] !== undefined && String(asset[k]).trim() !== "") {
-          return asset[k];
+    // ✅ 키명이 달라도 값을 찾아오는 fallback
+    function pickAny(asset, keys){
+      for (var i = 0; i < keys.length; i++){
+        var k = keys[i];
+        if (Object.prototype.hasOwnProperty.call(asset, k)){
+          var v = asset[k];
+          if (v !== null && v !== undefined && String(v).trim() !== "") return v;
         }
       }
-      return null;
+      return "";
+    }
+
+    // ✅ 면적(평) 표시용: 콤마 + 소수점 최대 4자리
+    function formatAreaPyeong(v){
+      if (v === null || v === undefined) return "";
+      var s = String(v).replace(/,/g, "").trim();
+      if (s === "") return "";
+      var n = Number(s);
+      if (isNaN(n)) return String(v);
+      return n.toLocaleString("ko-KR", { maximumFractionDigits: 4 });
     }
 
     // =========================
     // Pool 색상/아이콘 (기본 마커: 빠름)
     // =========================
-    const POOL_ICON_NAMES = ["red","blue","green","purple","yellow","ltblue","orange","pink"];
-    const POOL_CSS_COLORS = ["#e74c3c","#3498db","#2ecc71","#9b59b6","#f1c40f","#1abc9c","#e67e22","#fd79a8"];
-    const poolIndexMap = {}; // pool -> index
+    var POOL_ICON_NAMES = ["red","blue","green","purple","yellow","ltblue","orange","pink"];
+    var POOL_CSS_COLORS = ["#e74c3c","#3498db","#2ecc71","#9b59b6","#f1c40f","#1abc9c","#e67e22","#fd79a8"];
+    var poolIndexMap = {}; // pool -> index
 
-    function getPoolIndex(pool) {
-      const key = pool || "미지정";
+    function getPoolIndex(pool){
+      var key = pool || "미지정";
       if (poolIndexMap[key] !== undefined) return poolIndexMap[key];
-      const idx = Object.keys(poolIndexMap).length % POOL_ICON_NAMES.length;
+      var idx = Object.keys(poolIndexMap).length % POOL_ICON_NAMES.length;
       poolIndexMap[key] = idx;
       return idx;
     }
 
-    function getPoolIconUrl(pool) {
-      const idx = getPoolIndex(pool);
+    function getPoolIconUrl(pool){
+      var idx = getPoolIndex(pool);
       return "https://maps.google.com/mapfiles/ms/icons/" + POOL_ICON_NAMES[idx] + "-dot.png";
     }
 
-    function getPoolCssColor(pool) {
-      const idx = getPoolIndex(pool);
+    function getPoolCssColor(pool){
+      var idx = getPoolIndex(pool);
       return POOL_CSS_COLORS[idx];
     }
 
     // =========================
     // 전역 상태
     // =========================
-    let map, geocoder, searchCircle;
-    let markers = []; // { marker, typeKey, poolKey, borrowerName }
-    let typeVisibility = {};
-    let poolVisibility = {};
-    let borrowerFilter = "";
+    var map, geocoder, searchCircle;
+    var markers = []; // { marker, typeKey, poolKey, borrowerName, infoHtml }
+    var typeVisibility = {};
+    var poolVisibility = {};
+    var borrowerFilter = "";
 
     // =========================
     // InfoWindow 표시 순서
-    // (요청사항: 토지/건물/기계기구/제시외 라벨을 감정평가액_*로 변경)
-    // + 토지값이 안보이는 문제 해결을 위해 키 fallback 적용
+    // ✅ 토지면적(평): fallback로 반드시 표시되게 적용
     // =========================
-    const INFO_FIELDS = [
+    var INFO_FIELDS = [
       { key: "Pool", label: "Pool" },
       { key: "대표지번", label: "대표지번" },
       { key: "대표지번_정제", label: "대표지번_정제" },
@@ -197,21 +213,26 @@
       { key: "자산유형", label: "자산유형" },
       { key: "근저당설정순위", label: "근저당설정순위" },
       { key: "근저당권설정액", label: "근저당권설정액", fmt: "comma" },
-      { key: "토지면적(평)", label: "토지면적(평)" },
-      { key: "건물면적(평)", label: "건물면적(평)" },
 
-      // ✅ 여기 4개가 이번 수정 포인트 (라벨 + 값 fallback)
+      // ✅ 여기! 토지면적(평) 보이게
+      { key: "__land_area_pyeong", label: "토지면적(평)", fmt: "pyeong",
+        pick: function(a){ return pickAny(a, ["토지면적(평)","토지면젹(평)","토지면적","토지면젹"]); } },
+
+      { key: "__bldg_area_pyeong", label: "건물면적(평)", fmt: "pyeong",
+        pick: function(a){ return pickAny(a, ["건물면적(평)","건물면젹(평)","건물면적","건물면젹"]); } },
+
+      // 감정평가액 4종: 라벨 + fallback
       { key: "__land_appraisal", label: "감정평가액_토지", fmt: "comma",
-        pick: (a) => pickAny(a, ["감정평가액_토지","감정평가액-토지","감정평가액-대지","토지","감정평가액-대지(토지)"]) },
+        pick: function(a){ return pickAny(a, ["감정평가액_토지","감정평가액-토지","감정평가액-대지","토지","감정평가액-대지(토지)"]); } },
 
       { key: "__bldg_appraisal", label: "감정평가액_건물", fmt: "comma",
-        pick: (a) => pickAny(a, ["감정평가액_건물","감정평가액-건물","건물"]) },
+        pick: function(a){ return pickAny(a, ["감정평가액_건물","감정평가액-건물","건물"]); } },
 
       { key: "__mach_appraisal", label: "감정평가액_기계기구", fmt: "comma",
-        pick: (a) => pickAny(a, ["감정평가액_기계기구","감정평가액-기계기구","기계기구"]) },
+        pick: function(a){ return pickAny(a, ["감정평가액_기계기구","감정평가액-기계기구","기계기구"]); } },
 
       { key: "__extra_appraisal", label: "감정평가액_제시외", fmt: "comma",
-        pick: (a) => pickAny(a, ["감정평가액_제시외","감정평가액-제시외","제시외"]) },
+        pick: function(a){ return pickAny(a, ["감정평가액_제시외","감정평가액-제시외","제시외"]); } },
 
       { key: "합계", label: "감정평가액 합계", fmt: "comma" },
       { key: "1안 평당가액(토지+건물)", label: "1안 평당가액(토지+건물)", fmt: "comma" },
@@ -227,57 +248,60 @@
       { key: "회생진행상황", label: "회생진행상황" }
     ];
 
-    function buildInfoHtml(asset) {
-      let rows = "";
-      for (const f of INFO_FIELDS) {
-        let v;
+    function buildInfoHtml(asset){
+      var rows = "";
+      for (var i = 0; i < INFO_FIELDS.length; i++){
+        var f = INFO_FIELDS[i];
+        var v = "";
 
-        // ✅ pick 함수가 있으면 그걸 우선 사용
         if (typeof f.pick === "function") v = f.pick(asset);
         else v = asset[f.key];
 
         if (f.fmt === "comma") v = fmtComma(v);
         else if (f.fmt === "intcomma") v = fmtIntegerComma(v);
+        else if (f.fmt === "pyeong") v = formatAreaPyeong(v);
         else v = safeText(v);
 
-        rows += `<div class="iw-row"><b>${f.label}:</b> ${v}</div>`;
+        rows += '<div class="iw-row"><b>' + f.label + ':</b> ' + safeText(v) + '</div>';
       }
-      return `<div class="iw-wrap">${rows}</div>`;
+      return '<div class="iw-wrap">' + rows + '</div>';
     }
 
     // =========================
     // 데이터 로드
     // =========================
-    async function loadAssets() {
-      const res = await fetch("data/assets.json", { cache: "no-store" });
+    async function loadAssets(){
+      var res = await fetch("data/assets.json", { cache: "no-store" });
       if (!res.ok) throw new Error("assets.json 로드 실패: " + res.status);
       return await res.json();
     }
 
     // =========================
-    // 마커 가시성 / 범위
+    // 마커 가시성/범위
     // =========================
-    function updateMarkerVisibility() {
-      const q = (borrowerFilter || "").toLowerCase();
-      for (const obj of markers) {
-        const matchType = (typeVisibility[obj.typeKey] !== false);
-        const matchPool = (poolVisibility[obj.poolKey] !== false);
+    function updateMarkerVisibility(){
+      var q = (borrowerFilter || "").toLowerCase();
+      for (var i = 0; i < markers.length; i++){
+        var obj = markers[i];
+        var matchType = (typeVisibility[obj.typeKey] !== false);
+        var matchPool = (poolVisibility[obj.poolKey] !== false);
 
-        let matchBorrower = true;
-        if (q) {
-          const b = (obj.borrowerName || "").toLowerCase();
-          matchBorrower = b.includes(q);
+        var matchBorrower = true;
+        if (q){
+          var b = (obj.borrowerName || "").toLowerCase();
+          matchBorrower = b.indexOf(q) !== -1;
         }
         obj.marker.setVisible(matchType && matchPool && matchBorrower);
       }
     }
 
-    function fitMapToVisibleMarkers() {
-      const bounds = new google.maps.LatLngBounds();
-      let any = false;
-      for (const obj of markers) {
-        if (obj.marker.getVisible()) {
-          bounds.extend(obj.marker.getPosition());
+    function fitMapToVisibleMarkers(){
+      var bounds = new google.maps.LatLngBounds();
+      var any = false;
+      for (var i = 0; i < markers.length; i++){
+        var m = markers[i].marker;
+        if (m.getVisible()){
+          bounds.extend(m.getPosition());
           any = true;
         }
       }
@@ -285,30 +309,34 @@
     }
 
     // =========================
-    // 리스트 렌더링
+    // 필터 리스트 렌더링
     // =========================
-    function renderFilterList(containerId, counts, visibilityMap, colorFn, dataAttrName) {
-      const el = document.getElementById(containerId);
+    function renderFilterList(containerId, counts, visibilityMap, colorFn, dataAttrName){
+      var el = document.getElementById(containerId);
       el.innerHTML = "";
-      const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
 
-      for (const [key, count] of entries) {
-        const row = document.createElement("div");
+      var entries = Object.entries(counts).sort(function(a,b){ return b[1]-a[1]; });
+
+      for (var i = 0; i < entries.length; i++){
+        var key = entries[i][0];
+        var count = entries[i][1];
+
+        var row = document.createElement("div");
         row.className = "item";
 
-        const left = document.createElement("div");
+        var left = document.createElement("div");
         left.className = "left";
 
-        const box = document.createElement("input");
+        var box = document.createElement("input");
         box.type = "checkbox";
         box.checked = true;
         box.setAttribute(dataAttrName, key);
 
-        const dot = document.createElement("span");
+        var dot = document.createElement("span");
         dot.className = "dot";
         dot.style.backgroundColor = colorFn ? colorFn(key) : "#888";
 
-        const label = document.createElement("span");
+        var label = document.createElement("span");
         label.className = "label";
         label.textContent = key;
 
@@ -316,7 +344,7 @@
         left.appendChild(dot);
         left.appendChild(label);
 
-        const right = document.createElement("span");
+        var right = document.createElement("span");
         right.className = "count";
         right.textContent = count + "건";
 
@@ -324,8 +352,8 @@
         row.appendChild(right);
         el.appendChild(row);
 
-        box.addEventListener("change", function() {
-          const k = this.getAttribute(dataAttrName);
+        box.addEventListener("change", function(){
+          var k = this.getAttribute(dataAttrName);
           visibilityMap[k] = this.checked;
           updateMarkerVisibility();
           fitMapToVisibleMarkers();
@@ -333,28 +361,29 @@
       }
     }
 
-    function setupListSearch(inputId, listId) {
-      const input = document.getElementById(inputId);
-      const list = document.getElementById(listId);
+    function setupListSearch(inputId, listId){
+      var input = document.getElementById(inputId);
+      var list = document.getElementById(listId);
       if (!input || !list) return;
 
-      input.addEventListener("keyup", function() {
-        const q = (this.value || "").toLowerCase();
-        const rows = list.children;
-        for (let i = 0; i < rows.length; i++) {
-          const row = rows[i];
-          const label = row.querySelector(".label");
-          const text = label ? label.textContent.toLowerCase() : "";
-          row.style.display = text.includes(q) ? "" : "none";
+      input.addEventListener("keyup", function(){
+        var q = (this.value || "").toLowerCase();
+        var rows = list.children;
+        for (var i = 0; i < rows.length; i++){
+          var row = rows[i];
+          var label = row.querySelector(".label");
+          var text = label ? label.textContent.toLowerCase() : "";
+          row.style.display = (text.indexOf(q) !== -1) ? "" : "none";
         }
       });
     }
 
-    function setAllChecksByDataAttr(listId, dataAttrName, visibilityMap, checked) {
-      const list = document.getElementById(listId);
-      const boxes = list.querySelectorAll(`input[${dataAttrName}]`);
-      for (const box of boxes) {
-        const key = box.getAttribute(dataAttrName);
+    function setAllChecksByDataAttr(listId, dataAttrName, visibilityMap, checked){
+      var list = document.getElementById(listId);
+      var boxes = list.querySelectorAll("input[" + dataAttrName + "]");
+      for (var i = 0; i < boxes.length; i++){
+        var box = boxes[i];
+        var key = box.getAttribute(dataAttrName);
         box.checked = checked;
         visibilityMap[key] = checked;
       }
@@ -365,32 +394,32 @@
     // =========================
     // 토스트
     // =========================
-    function showToast(msg) {
-      const el = document.getElementById("toast");
+    function showToast(msg){
+      var el = document.getElementById("toast");
       el.textContent = msg;
       el.classList.add("show");
-      setTimeout(() => el.classList.remove("show"), 1500);
+      setTimeout(function(){ el.classList.remove("show"); }, 1500);
     }
 
     // =========================
-    // UI 이벤트
+    // 검색/버튼 UI
     // =========================
-    function setupSearchBox() {
-      const input = document.getElementById("search-input");
-      const btn = document.getElementById("search-btn");
+    function setupSearchBox(){
+      var input = document.getElementById("search-input");
+      var btn = document.getElementById("search-btn");
       if (!input || !btn) return;
 
-      function doSearch() {
-        const q = (input.value || "").trim();
+      function doSearch(){
+        var q = (input.value || "").trim();
         if (!q) return;
 
-        geocoder.geocode({ address: q, region: "kr" }, (results, status) => {
-          if (status === "OK" && results && results.length) {
-            const loc = results[0].geometry.location;
+        geocoder.geocode({ address: q, region: "kr" }, function(results, status){
+          if (status === "OK" && results && results.length){
+            var loc = results[0].geometry.location;
 
             if (searchCircle) searchCircle.setMap(null);
             searchCircle = new google.maps.Circle({
-              map,
+              map: map,
               center: loc,
               radius: 1000,
               fillColor: "#4285F4",
@@ -408,32 +437,36 @@
       }
 
       btn.addEventListener("click", doSearch);
-      input.addEventListener("keyup", (e) => { if (e.key === "Enter") doSearch(); });
+      input.addEventListener("keyup", function(e){
+        if (e.key === "Enter") doSearch();
+      });
     }
 
-    function setupBorrowerBox() {
-      const input = document.getElementById("borrower-input");
-      const btn = document.getElementById("borrower-btn");
+    function setupBorrowerBox(){
+      var input = document.getElementById("borrower-input");
+      var btn = document.getElementById("borrower-btn");
       if (!input || !btn) return;
 
-      function apply() {
+      function apply(){
         borrowerFilter = (input.value || "").trim();
         updateMarkerVisibility();
         fitMapToVisibleMarkers();
       }
 
       btn.addEventListener("click", apply);
-      input.addEventListener("keyup", (e) => { if (e.key === "Enter") apply(); });
+      input.addEventListener("keyup", function(e){
+        if (e.key === "Enter") apply();
+      });
     }
 
-    function setupDiscoSearchBox() {
-      const input = document.getElementById("disco-input");
-      const btn = document.getElementById("disco-btn");
+    function setupDiscoSearchBox(){
+      var input = document.getElementById("disco-input");
+      var btn = document.getElementById("disco-btn");
       if (!input || !btn) return;
 
-      async function goDisco() {
-        const q = (input.value || "").trim();
-        if (!q) {
+      async function goDisco(){
+        var q = (input.value || "").trim();
+        if (!q){
           alert("검색할 지번 또는 주소를 입력하세요.");
           return;
         }
@@ -445,38 +478,42 @@
           alert("클립보드 복사에 실패했습니다. (브라우저 권한/HTTPS 확인)\n\n그래도 Disco 검색은 새 탭에서 열립니다.");
         }
 
-        const url = "https://disco.re/search?keyword=" + encodeURIComponent(q);
+        var url = "https://disco.re/search?keyword=" + encodeURIComponent(q);
         window.open(url, "_blank");
       }
 
       btn.addEventListener("click", goDisco);
-      input.addEventListener("keyup", (e) => { if (e.key === "Enter") goDisco(); });
+      input.addEventListener("keyup", function(e){
+        if (e.key === "Enter") goDisco();
+      });
     }
 
-    function setupResetButton() {
-      const btn = document.getElementById("reset-btn");
+    function setupResetButton(){
+      var btn = document.getElementById("reset-btn");
       if (!btn) return;
 
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", function(){
         borrowerFilter = "";
 
-        Object.keys(typeVisibility).forEach(k => typeVisibility[k] = true);
-        Object.keys(poolVisibility).forEach(k => poolVisibility[k] = true);
+        Object.keys(typeVisibility).forEach(function(k){ typeVisibility[k] = true; });
+        Object.keys(poolVisibility).forEach(function(k){ poolVisibility[k] = true; });
 
-        document.querySelectorAll('input[data-type], input[data-pool]').forEach(b => b.checked = true);
+        document.querySelectorAll("input[data-type], input[data-pool]").forEach(function(b){ b.checked = true; });
 
-        ["type-search","pool-search","search-input","borrower-input","disco-input"].forEach(id => {
-          const el = document.getElementById(id);
+        ["type-search","pool-search","search-input","borrower-input","disco-input"].forEach(function(id){
+          var el = document.getElementById(id);
           if (el) el.value = "";
         });
 
-        ["type-list","pool-list"].forEach(id => {
-          const list = document.getElementById(id);
+        ["type-list","pool-list"].forEach(function(id){
+          var list = document.getElementById(id);
           if (!list) return;
-          for (const row of list.children) row.style.display = "";
+          for (var i = 0; i < list.children.length; i++){
+            list.children[i].style.display = "";
+          }
         });
 
-        if (searchCircle) { searchCircle.setMap(null); searchCircle = null; }
+        if (searchCircle){ searchCircle.setMap(null); searchCircle = null; }
 
         updateMarkerVisibility();
         fitMapToVisibleMarkers();
@@ -486,8 +523,8 @@
     // =========================
     // initMap
     // =========================
-    async function initMap() {
-      const assets = await loadAssets();
+    async function initMap(){
+      var assets = await loadAssets();
 
       map = new google.maps.Map(document.getElementById("map"), {
         zoom: 7,
@@ -497,51 +534,73 @@
 
       geocoder = new google.maps.Geocoder();
 
-      const bounds = new google.maps.LatLngBounds();
-      const typeCounts = {};
-      const poolCounts = {};
+      var bounds = new google.maps.LatLngBounds();
+      var typeCounts = {};
+      var poolCounts = {};
 
-      for (const asset of assets) {
-        const lat = Number(asset.lat);
-        const lng = Number(asset.lng);
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      for (var i = 0; i < assets.length; i++){
+        var asset = assets[i];
 
-        const typeKey = asset["자산유형"] || "기타";
-        const poolKey = asset["Pool"] || "미지정";
-        const borrowerName = asset["차주명"] || "";
+        // 좌표 키 호환 (lat/lng 또는 geo_lat/geo_lng)
+        var lat = Number(asset.lat);
+        var lng = Number(asset.lng);
+        if (!isFinite(lat) || !isFinite(lng)){
+          lat = Number(asset.geo_lat);
+          lng = Number(asset.geo_lng);
+        }
+        if (!isFinite(lat) || !isFinite(lng)) continue;
 
-        if (!typeCounts[typeKey]) { typeCounts[typeKey] = 0; typeVisibility[typeKey] = true; }
-        if (!poolCounts[poolKey]) { poolCounts[poolKey] = 0; poolVisibility[poolKey] = true; }
+        var typeKey = asset["자산유형"] || "기타";
+        var poolKey = asset["Pool"] || "미지정";
+        var borrowerName = asset["차주명"] || "";
+
+        if (!typeCounts[typeKey]){ typeCounts[typeKey] = 0; typeVisibility[typeKey] = true; }
+        if (!poolCounts[poolKey]){ poolCounts[poolKey] = 0; poolVisibility[poolKey] = true; }
 
         typeCounts[typeKey] += 1;
         poolCounts[poolKey] += 1;
 
-        const marker = new google.maps.Marker({
-          position: { lat, lng },
-          map,
+        // ✅ InfoWindow HTML 미리 생성 (클릭 때마다 만드는 비용 줄임)
+        var infoHtml = buildInfoHtml(asset);
+
+        var marker = new google.maps.Marker({
+          position: { lat: lat, lng: lng },
+          map: map,
           icon: getPoolIconUrl(poolKey),
           title: asset["대표지번_정제"] || asset["대표지번"] || ""
         });
 
-        const iw = new google.maps.InfoWindow({ content: buildInfoHtml(asset) });
-        marker.addListener("click", () => iw.open(map, marker));
+        (function(markerInstance, html){
+          var iw = new google.maps.InfoWindow({ content: html });
+          markerInstance.addListener("click", function(){
+            iw.open(map, markerInstance);
+          });
+        })(marker, infoHtml);
 
-        markers.push({ marker, typeKey, poolKey, borrowerName });
+        markers.push({ marker: marker, typeKey: typeKey, poolKey: poolKey, borrowerName: borrowerName });
         bounds.extend(marker.getPosition());
       }
 
       if (!bounds.isEmpty()) map.fitBounds(bounds);
 
-      renderFilterList("type-list", typeCounts, typeVisibility, () => "#888", "data-type");
+      renderFilterList("type-list", typeCounts, typeVisibility, function(){ return "#888"; }, "data-type");
       renderFilterList("pool-list", poolCounts, poolVisibility, getPoolCssColor, "data-pool");
 
       setupListSearch("type-search", "type-list");
       setupListSearch("pool-search", "pool-list");
 
-      document.getElementById("type-all").addEventListener("click", () => setAllChecksByDataAttr("type-list", "data-type", typeVisibility, true));
-      document.getElementById("type-none").addEventListener("click", () => setAllChecksByDataAttr("type-list", "data-type", typeVisibility, false));
-      document.getElementById("pool-all").addEventListener("click", () => setAllChecksByDataAttr("pool-list", "data-pool", poolVisibility, true));
-      document.getElementById("pool-none").addEventListener("click", () => setAllChecksByDataAttr("pool-list", "data-pool", poolVisibility, false));
+      document.getElementById("type-all").addEventListener("click", function(){
+        setAllChecksByDataAttr("type-list", "data-type", typeVisibility, true);
+      });
+      document.getElementById("type-none").addEventListener("click", function(){
+        setAllChecksByDataAttr("type-list", "data-type", typeVisibility, false);
+      });
+      document.getElementById("pool-all").addEventListener("click", function(){
+        setAllChecksByDataAttr("pool-list", "data-pool", poolVisibility, true);
+      });
+      document.getElementById("pool-none").addEventListener("click", function(){
+        setAllChecksByDataAttr("pool-list", "data-pool", poolVisibility, false);
+      });
 
       setupSearchBox();
       setupBorrowerBox();
@@ -557,4 +616,3 @@
   ></script>
 </body>
 </html>
-
