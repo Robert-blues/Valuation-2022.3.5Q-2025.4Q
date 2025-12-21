@@ -159,25 +159,36 @@
       return n.toLocaleString("ko-KR", { maximumFractionDigits: 4 });
     }
 
-    // ✅ 핵심: JSON 안의 실제 키를 스캔해서 "토지면적(평)"에 해당하는 값을 찾아온다
+    // ✅ 핵심: JSON 키가 조금 달라도 "대지면적(평)" 값을 찾아온다
     function resolveLandAreaPyeong(asset){
-      // 1) 우선 우리가 예상하는 키들
-      var v = pickAny(asset, ["토지면적(평)", "토지면젹(평)", "토지면적", "토지면젹"]);
+      // 1) 우선 예상 키들(정확 키 + 오타/변형 대비)
+      var v = pickAny(asset, [
+        "대지면적(평)",
+        "대지면적(평 )",
+        "대지면적",
+        "대지면젹(평)",
+        "대지면젹",
+        "토지면적(평)",    // 혹시 일부 파일에서 토지로 들어온 경우까지 커버
+        "토지면젹(평)",
+        "토지면적",
+        "토지면젹"
+      ]);
       if (v !== "") return v;
 
-      // 2) 키 전체 스캔: '토지'+'면적'+'평'을 포함하는 키 찾기
+      // 2) 키 전체 스캔: ('대지' 또는 '토지') + '면적' + ('평' 포함) 형태 자동 탐색
       var keys = Object.keys(asset || {});
       for (var i = 0; i < keys.length; i++){
         var k = keys[i];
-        var kk = k.replace(/\s+/g, ""); // 공백 제거 후 매칭
-        if (kk.indexOf("토지") !== -1 && kk.indexOf("면적") !== -1 && (kk.indexOf("평") !== -1 || kk.indexOf("(평") !== -1)){
+        var kk = k.replace(/\s+/g, ""); // 공백 제거
+        var hasLandWord = (kk.indexOf("대지") !== -1) || (kk.indexOf("토지") !== -1);
+        var hasArea = (kk.indexOf("면적") !== -1);
+        var hasPyeong = (kk.indexOf("평") !== -1) || (kk.indexOf("(평") !== -1);
+
+        if (hasLandWord && hasArea && hasPyeong){
           var val = asset[k];
           if (val !== null && val !== undefined && String(val).trim() !== "") return val;
         }
       }
-
-      // 3) (옵션) "㎡"만 있는 경우가 있으면 여기서 평으로 환산할 수도 있음
-      //    -> 지금은 환산은 안 하고 빈 값 반환
       return "";
     }
 
@@ -198,7 +209,7 @@
     }
 
     // -------------------------
-    // Pool 아이콘
+    // Pool 아이콘 (기본 마커: 빠름)
     // -------------------------
     var POOL_ICON_NAMES = ["red","blue","green","purple","yellow","ltblue","orange","pink"];
     var POOL_CSS_COLORS = ["#e74c3c","#3498db","#2ecc71","#9b59b6","#f1c40f","#1abc9c","#e67e22","#fd79a8"];
@@ -232,7 +243,7 @@
     var borrowerFilter = "";
 
     // -------------------------
-    // InfoWindow 순서
+    // InfoWindow 순서 (대지면적(평) 표시)
     // -------------------------
     var INFO_FIELDS = [
       { key: "Pool", label: "Pool" },
@@ -249,8 +260,9 @@
       { key: "근저당설정순위", label: "근저당설정순위" },
       { key: "근저당권설정액", label: "근저당권설정액", fmt: "comma" },
 
-      // ✅ 토지면적(평): 자동 탐색 결과를 표시
-      { key: "__land_area", label: "토지면적(평)", fmt: "pyeong", pick: function(a){ return resolveLandAreaPyeong(a); } },
+      // ✅ 여기! 토지면적이 아니라 "대지면적(평)"로 표시
+      { key: "__land_area", label: "대지면적(평)", fmt: "pyeong", pick: function(a){ return resolveLandAreaPyeong(a); } },
+
       { key: "__bldg_area", label: "건물면적(평)", fmt: "pyeong", pick: function(a){ return resolveBldgAreaPyeong(a); } },
 
       { key: "__land_appraisal", label: "감정평가액_토지", fmt: "comma",
