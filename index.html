@@ -111,9 +111,9 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    // =========================
-    // 유틸: 숫자/텍스트
-    // =========================
+    // -------------------------
+    // 유틸
+    // -------------------------
     function toNumber(v){
       if (v === null || v === undefined) return NaN;
       if (typeof v === "number") return v;
@@ -139,7 +139,6 @@
       return String(v);
     }
 
-    // ✅ 키명이 달라도 값을 찾아오는 fallback
     function pickAny(asset, keys){
       for (var i = 0; i < keys.length; i++){
         var k = keys[i];
@@ -151,7 +150,6 @@
       return "";
     }
 
-    // ✅ 면적(평) 표시용: 콤마 + 소수점 최대 4자리
     function formatAreaPyeong(v){
       if (v === null || v === undefined) return "";
       var s = String(v).replace(/,/g, "").trim();
@@ -161,12 +159,50 @@
       return n.toLocaleString("ko-KR", { maximumFractionDigits: 4 });
     }
 
-    // =========================
-    // Pool 색상/아이콘 (기본 마커: 빠름)
-    // =========================
+    // ✅ 핵심: JSON 안의 실제 키를 스캔해서 "토지면적(평)"에 해당하는 값을 찾아온다
+    function resolveLandAreaPyeong(asset){
+      // 1) 우선 우리가 예상하는 키들
+      var v = pickAny(asset, ["토지면적(평)", "토지면젹(평)", "토지면적", "토지면젹"]);
+      if (v !== "") return v;
+
+      // 2) 키 전체 스캔: '토지'+'면적'+'평'을 포함하는 키 찾기
+      var keys = Object.keys(asset || {});
+      for (var i = 0; i < keys.length; i++){
+        var k = keys[i];
+        var kk = k.replace(/\s+/g, ""); // 공백 제거 후 매칭
+        if (kk.indexOf("토지") !== -1 && kk.indexOf("면적") !== -1 && (kk.indexOf("평") !== -1 || kk.indexOf("(평") !== -1)){
+          var val = asset[k];
+          if (val !== null && val !== undefined && String(val).trim() !== "") return val;
+        }
+      }
+
+      // 3) (옵션) "㎡"만 있는 경우가 있으면 여기서 평으로 환산할 수도 있음
+      //    -> 지금은 환산은 안 하고 빈 값 반환
+      return "";
+    }
+
+    function resolveBldgAreaPyeong(asset){
+      var v = pickAny(asset, ["건물면적(평)", "건물면젹(평)", "건물면적", "건물면젹"]);
+      if (v !== "") return v;
+
+      var keys = Object.keys(asset || {});
+      for (var i = 0; i < keys.length; i++){
+        var k = keys[i];
+        var kk = k.replace(/\s+/g, "");
+        if (kk.indexOf("건물") !== -1 && kk.indexOf("면적") !== -1 && (kk.indexOf("평") !== -1 || kk.indexOf("(평") !== -1)){
+          var val = asset[k];
+          if (val !== null && val !== undefined && String(val).trim() !== "") return val;
+        }
+      }
+      return "";
+    }
+
+    // -------------------------
+    // Pool 아이콘
+    // -------------------------
     var POOL_ICON_NAMES = ["red","blue","green","purple","yellow","ltblue","orange","pink"];
     var POOL_CSS_COLORS = ["#e74c3c","#3498db","#2ecc71","#9b59b6","#f1c40f","#1abc9c","#e67e22","#fd79a8"];
-    var poolIndexMap = {}; // pool -> index
+    var poolIndexMap = {};
 
     function getPoolIndex(pool){
       var key = pool || "미지정";
@@ -186,19 +222,18 @@
       return POOL_CSS_COLORS[idx];
     }
 
-    // =========================
+    // -------------------------
     // 전역 상태
-    // =========================
+    // -------------------------
     var map, geocoder, searchCircle;
-    var markers = []; // { marker, typeKey, poolKey, borrowerName, infoHtml }
+    var markers = [];
     var typeVisibility = {};
     var poolVisibility = {};
     var borrowerFilter = "";
 
-    // =========================
-    // InfoWindow 표시 순서
-    // ✅ 토지면적(평): fallback로 반드시 표시되게 적용
-    // =========================
+    // -------------------------
+    // InfoWindow 순서
+    // -------------------------
     var INFO_FIELDS = [
       { key: "Pool", label: "Pool" },
       { key: "대표지번", label: "대표지번" },
@@ -214,14 +249,10 @@
       { key: "근저당설정순위", label: "근저당설정순위" },
       { key: "근저당권설정액", label: "근저당권설정액", fmt: "comma" },
 
-      // ✅ 여기! 토지면적(평) 보이게
-      { key: "__land_area_pyeong", label: "토지면적(평)", fmt: "pyeong",
-        pick: function(a){ return pickAny(a, ["토지면적(평)","토지면젹(평)","토지면적","토지면젹"]); } },
+      // ✅ 토지면적(평): 자동 탐색 결과를 표시
+      { key: "__land_area", label: "토지면적(평)", fmt: "pyeong", pick: function(a){ return resolveLandAreaPyeong(a); } },
+      { key: "__bldg_area", label: "건물면적(평)", fmt: "pyeong", pick: function(a){ return resolveBldgAreaPyeong(a); } },
 
-      { key: "__bldg_area_pyeong", label: "건물면적(평)", fmt: "pyeong",
-        pick: function(a){ return pickAny(a, ["건물면적(평)","건물면젹(평)","건물면적","건물면젹"]); } },
-
-      // 감정평가액 4종: 라벨 + fallback
       { key: "__land_appraisal", label: "감정평가액_토지", fmt: "comma",
         pick: function(a){ return pickAny(a, ["감정평가액_토지","감정평가액-토지","감정평가액-대지","토지","감정평가액-대지(토지)"]); } },
 
@@ -252,10 +283,7 @@
       var rows = "";
       for (var i = 0; i < INFO_FIELDS.length; i++){
         var f = INFO_FIELDS[i];
-        var v = "";
-
-        if (typeof f.pick === "function") v = f.pick(asset);
-        else v = asset[f.key];
+        var v = (typeof f.pick === "function") ? f.pick(asset) : asset[f.key];
 
         if (f.fmt === "comma") v = fmtComma(v);
         else if (f.fmt === "intcomma") v = fmtIntegerComma(v);
@@ -267,18 +295,12 @@
       return '<div class="iw-wrap">' + rows + '</div>';
     }
 
-    // =========================
-    // 데이터 로드
-    // =========================
     async function loadAssets(){
       var res = await fetch("data/assets.json", { cache: "no-store" });
       if (!res.ok) throw new Error("assets.json 로드 실패: " + res.status);
       return await res.json();
     }
 
-    // =========================
-    // 마커 가시성/범위
-    // =========================
     function updateMarkerVisibility(){
       var q = (borrowerFilter || "").toLowerCase();
       for (var i = 0; i < markers.length; i++){
@@ -308,13 +330,9 @@
       if (any) map.fitBounds(bounds);
     }
 
-    // =========================
-    // 필터 리스트 렌더링
-    // =========================
     function renderFilterList(containerId, counts, visibilityMap, colorFn, dataAttrName){
       var el = document.getElementById(containerId);
       el.innerHTML = "";
-
       var entries = Object.entries(counts).sort(function(a,b){ return b[1]-a[1]; });
 
       for (var i = 0; i < entries.length; i++){
@@ -391,9 +409,6 @@
       fitMapToVisibleMarkers();
     }
 
-    // =========================
-    // 토스트
-    // =========================
     function showToast(msg){
       var el = document.getElementById("toast");
       el.textContent = msg;
@@ -401,9 +416,6 @@
       setTimeout(function(){ el.classList.remove("show"); }, 1500);
     }
 
-    // =========================
-    // 검색/버튼 UI
-    // =========================
     function setupSearchBox(){
       var input = document.getElementById("search-input");
       var btn = document.getElementById("search-btn");
@@ -416,19 +428,13 @@
         geocoder.geocode({ address: q, region: "kr" }, function(results, status){
           if (status === "OK" && results && results.length){
             var loc = results[0].geometry.location;
-
             if (searchCircle) searchCircle.setMap(null);
-            searchCircle = new google.maps.Circle({
-              map: map,
-              center: loc,
-              radius: 1000,
-              fillColor: "#4285F4",
-              fillOpacity: 0.15,
-              strokeColor: "#4285F4",
-              strokeOpacity: 0.85,
-              strokeWeight: 1
-            });
 
+            searchCircle = new google.maps.Circle({
+              map: map, center: loc, radius: 1000,
+              fillColor: "#4285F4", fillOpacity: 0.15,
+              strokeColor: "#4285F4", strokeOpacity: 0.85, strokeWeight: 1
+            });
             map.fitBounds(searchCircle.getBounds());
           } else {
             alert("해당 주소를 찾을 수 없습니다: " + status);
@@ -437,9 +443,7 @@
       }
 
       btn.addEventListener("click", doSearch);
-      input.addEventListener("keyup", function(e){
-        if (e.key === "Enter") doSearch();
-      });
+      input.addEventListener("keyup", function(e){ if (e.key === "Enter") doSearch(); });
     }
 
     function setupBorrowerBox(){
@@ -454,9 +458,7 @@
       }
 
       btn.addEventListener("click", apply);
-      input.addEventListener("keyup", function(e){
-        if (e.key === "Enter") apply();
-      });
+      input.addEventListener("keyup", function(e){ if (e.key === "Enter") apply(); });
     }
 
     function setupDiscoSearchBox(){
@@ -466,10 +468,7 @@
 
       async function goDisco(){
         var q = (input.value || "").trim();
-        if (!q){
-          alert("검색할 지번 또는 주소를 입력하세요.");
-          return;
-        }
+        if (!q){ alert("검색할 지번 또는 주소를 입력하세요."); return; }
 
         try {
           await navigator.clipboard.writeText(q);
@@ -477,15 +476,11 @@
         } catch (e) {
           alert("클립보드 복사에 실패했습니다. (브라우저 권한/HTTPS 확인)\n\n그래도 Disco 검색은 새 탭에서 열립니다.");
         }
-
-        var url = "https://disco.re/search?keyword=" + encodeURIComponent(q);
-        window.open(url, "_blank");
+        window.open("https://disco.re/search?keyword=" + encodeURIComponent(q), "_blank");
       }
 
       btn.addEventListener("click", goDisco);
-      input.addEventListener("keyup", function(e){
-        if (e.key === "Enter") goDisco();
-      });
+      input.addEventListener("keyup", function(e){ if (e.key === "Enter") goDisco(); });
     }
 
     function setupResetButton(){
@@ -494,10 +489,8 @@
 
       btn.addEventListener("click", function(){
         borrowerFilter = "";
-
         Object.keys(typeVisibility).forEach(function(k){ typeVisibility[k] = true; });
         Object.keys(poolVisibility).forEach(function(k){ poolVisibility[k] = true; });
-
         document.querySelectorAll("input[data-type], input[data-pool]").forEach(function(b){ b.checked = true; });
 
         ["type-search","pool-search","search-input","borrower-input","disco-input"].forEach(function(id){
@@ -508,28 +501,20 @@
         ["type-list","pool-list"].forEach(function(id){
           var list = document.getElementById(id);
           if (!list) return;
-          for (var i = 0; i < list.children.length; i++){
-            list.children[i].style.display = "";
-          }
+          for (var i = 0; i < list.children.length; i++) list.children[i].style.display = "";
         });
 
         if (searchCircle){ searchCircle.setMap(null); searchCircle = null; }
-
         updateMarkerVisibility();
         fitMapToVisibleMarkers();
       });
     }
 
-    // =========================
-    // initMap
-    // =========================
     async function initMap(){
       var assets = await loadAssets();
 
       map = new google.maps.Map(document.getElementById("map"), {
-        zoom: 7,
-        center: { lat: 36.5, lng: 127.8 },
-        clickableIcons: false
+        zoom: 7, center: { lat: 36.5, lng: 127.8 }, clickableIcons: false
       });
 
       geocoder = new google.maps.Geocoder();
@@ -541,7 +526,6 @@
       for (var i = 0; i < assets.length; i++){
         var asset = assets[i];
 
-        // 좌표 키 호환 (lat/lng 또는 geo_lat/geo_lng)
         var lat = Number(asset.lat);
         var lng = Number(asset.lng);
         if (!isFinite(lat) || !isFinite(lng)){
@@ -556,11 +540,9 @@
 
         if (!typeCounts[typeKey]){ typeCounts[typeKey] = 0; typeVisibility[typeKey] = true; }
         if (!poolCounts[poolKey]){ poolCounts[poolKey] = 0; poolVisibility[poolKey] = true; }
-
         typeCounts[typeKey] += 1;
         poolCounts[poolKey] += 1;
 
-        // ✅ InfoWindow HTML 미리 생성 (클릭 때마다 만드는 비용 줄임)
         var infoHtml = buildInfoHtml(asset);
 
         var marker = new google.maps.Marker({
@@ -572,9 +554,7 @@
 
         (function(markerInstance, html){
           var iw = new google.maps.InfoWindow({ content: html });
-          markerInstance.addListener("click", function(){
-            iw.open(map, markerInstance);
-          });
+          markerInstance.addListener("click", function(){ iw.open(map, markerInstance); });
         })(marker, infoHtml);
 
         markers.push({ marker: marker, typeKey: typeKey, poolKey: poolKey, borrowerName: borrowerName });
@@ -611,8 +591,7 @@
 
   <script
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCys3BT1to00AEaF0ZEFXDFDBgod9uRinw&callback=initMap"
-    async
-    defer
+    async defer
   ></script>
 </body>
 </html>
