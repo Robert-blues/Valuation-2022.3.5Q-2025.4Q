@@ -6,6 +6,59 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     html, body { margin:0; padding:0; height:100%; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+
+    /* =========================
+       🔐 Login Overlay
+    ========================= */
+    #login-overlay{
+      position: fixed;
+      inset: 0;
+      background: #f4f5f7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+    }
+    .login-box{
+      width: 360px;
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 24px 28px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+      text-align: center;
+    }
+    .login-box h2{
+      margin: 0 0 16px 0;
+      font-size: 18px;
+    }
+    .login-box input{
+      width: 100%;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    .login-box button{
+      width: 100%;
+      padding: 10px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 1px solid #d0d0d0;
+      background: #efefef;
+      cursor: pointer;
+    }
+    .login-box button:hover{ background:#e6e6e6; }
+    .login-note{
+      margin: 10px 0 0 0;
+      font-size: 12px;
+      color: #666;
+    }
+
+    /* =========================
+       🗺️ Map Layout
+    ========================= */
     #map { position:absolute; top:0; left:0; right:300px; bottom:0; }
     #sidebar {
       position:absolute; top:0; right:0; bottom:0; width:300px;
@@ -57,60 +110,101 @@
 </head>
 
 <body>
-  <div id="map"></div>
-
-  <div id="sidebar">
-    <h2>투자금융팀 평가 자산 Map</h2>
-
-    <div class="section">
-      <button id="reset-btn">🔄 필터 초기화 (전체 보기)</button>
-    </div>
-
-    <div class="section">
-      <h3>지번 / 주소 검색</h3>
-      <input id="search-input" type="text" placeholder="예: 경기도 안산시 상록구 본오동 730-2" />
-      <button id="search-btn">현재 지도에서 검색</button>
-      <p class="mini-help">입력한 주소/지번을 지도에서 찾아 반경(1km)을 표시하고 해당 위치로 이동합니다.</p>
-    </div>
-
-    <div class="section">
-      <h3>차주명 검색</h3>
-      <input id="borrower-input" type="text" placeholder="차주명 입력 (부분검색)" />
-      <button id="borrower-btn">차주명으로 필터</button>
-      <p class="mini-help">차주명에 입력값이 포함된 자산만 표시합니다.</p>
-    </div>
-
-    <div class="section">
-      <h3>Disco 주소 검색</h3>
-      <input id="disco-input" type="text" placeholder="지번 또는 주소 입력" />
-      <button id="disco-btn">Disco에서 검색하기 (복사 + 새탭)</button>
-      <p class="mini-help">버튼 클릭 시 입력값이 자동으로 클립보드에 복사되고, disco.re 검색이 새 탭에서 열립니다.</p>
-    </div>
-
-    <div class="section">
-      <h3>자산유형 필터</h3>
-      <input id="type-search" type="text" placeholder="자산유형 검색" />
-      <div class="mini-btn-row">
-        <button id="type-all">전체</button>
-        <button id="type-none">해제</button>
-      </div>
-      <div id="type-list" class="list"></div>
-    </div>
-
-    <div class="section">
-      <h3>Pool 필터</h3>
-      <input id="pool-search" type="text" placeholder="Pool 검색" />
-      <div class="mini-btn-row">
-        <button id="pool-all">전체</button>
-        <button id="pool-none">해제</button>
-      </div>
-      <div id="pool-list" class="list"></div>
+  <!-- 🔐 로그인 오버레이 -->
+  <div id="login-overlay">
+    <div class="login-box">
+      <h2>자산지도 로그인 (Pilot)</h2>
+      <input id="login-id" type="text" placeholder="ID" autocomplete="username" />
+      <input id="login-pw" type="password" placeholder="Password" autocomplete="current-password" />
+      <button id="login-btn" type="button">로그인</button>
+      <p class="login-note">투자금융팀 Portfolio 평가 자산 Map</p>
     </div>
   </div>
 
-  <div id="toast" class="toast"></div>
+  <!-- ✅ 로그인 성공 후 보여줄 앱 -->
+  <div id="app" style="display:none;">
+    <div id="map"></div>
+
+    <div id="sidebar">
+      <h2>투자금융팀 평가 자산 Map</h2>
+
+      <div class="section">
+        <button id="reset-btn">🔄 필터 초기화 (전체 보기)</button>
+      </div>
+
+      <div class="section">
+        <h3>지번 / 주소 검색</h3>
+        <input id="search-input" type="text" placeholder="예: 경기도 안산시 상록구 본오동 730-2" />
+        <button id="search-btn">현재 지도에서 검색</button>
+        <p class="mini-help">입력한 주소/지번을 지도에서 찾아 반경(1km)을 표시하고 해당 위치로 이동</p>
+      </div>
+
+      <div class="section">
+        <h3>차주명 검색</h3>
+        <input id="borrower-input" type="text" placeholder="차주명 입력 (부분검색)" />
+        <button id="borrower-btn">차주명으로 필터</button>
+        <p class="mini-help">차주명에 입력값이 포함된 자산만 표시</p>
+      </div>
+
+      <div class="section">
+        <h3>Disco 주소 검색</h3>
+        <input id="disco-input" type="text" placeholder="지번 또는 주소 입력" />
+        <button id="disco-btn">Disco에서 검색하기 (복사 + 새탭)</button>
+        <p class="mini-help">버튼 클릭 시 입력값이 자동으로 클립보드에 복사 후 disco.re 검색이 새 탭에서 열림</p>
+      </div>
+
+      <div class="section">
+        <h3>자산유형 필터</h3>
+        <input id="type-search" type="text" placeholder="자산유형 검색" />
+        <div class="mini-btn-row">
+          <button id="type-all">전체</button>
+          <button id="type-none">해제</button>
+        </div>
+        <div id="type-list" class="list"></div>
+      </div>
+
+      <div class="section">
+        <h3>Pool 필터</h3>
+        <input id="pool-search" type="text" placeholder="Pool 검색" />
+        <div class="mini-btn-row">
+          <button id="pool-all">전체</button>
+          <button id="pool-none">해제</button>
+        </div>
+        <div id="pool-list" class="list"></div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+  </div>
 
   <script>
+    /* =========================
+       🔐 Login Gate (Front-end only)
+       ========================= */
+    function doLogin() {
+      var id = (document.getElementById("login-id").value || "").trim();
+      var pw = (document.getElementById("login-pw").value || "").trim();
+
+      if (id === "kfniib" && pw === "kiwoomfni") {
+        document.getElementById("login-overlay").style.display = "none";
+        document.getElementById("app").style.display = "block";
+      } else {
+        alert("ID 또는 Password가 올바르지 않습니다.");
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", function(){
+      var btn = document.getElementById("login-btn");
+      if (btn) btn.addEventListener("click", doLogin);
+
+      document.addEventListener("keydown", function(e){
+        // 로그인 오버레이가 떠 있을 때만 Enter 동작
+        var overlay = document.getElementById("login-overlay");
+        if (!overlay || overlay.style.display === "none") return;
+        if (e.key === "Enter") doLogin();
+      });
+    });
+
     // -------------------------
     // 유틸
     // -------------------------
@@ -159,27 +253,25 @@
       return n.toLocaleString("ko-KR", { maximumFractionDigits: 4 });
     }
 
-    // ✅ 핵심: JSON 키가 조금 달라도 "대지면적(평)" 값을 찾아온다
+    // ✅ "대지면적(평)" 자동 탐색
     function resolveLandAreaPyeong(asset){
-      // 1) 우선 예상 키들(정확 키 + 오타/변형 대비)
       var v = pickAny(asset, [
         "대지면적(평)",
         "대지면적(평 )",
         "대지면적",
         "대지면젹(평)",
         "대지면젹",
-        "토지면적(평)",    // 혹시 일부 파일에서 토지로 들어온 경우까지 커버
+        "토지면적(평)",    // 일부 파일 혼재 대비
         "토지면젹(평)",
         "토지면적",
         "토지면젹"
       ]);
       if (v !== "") return v;
 
-      // 2) 키 전체 스캔: ('대지' 또는 '토지') + '면적' + ('평' 포함) 형태 자동 탐색
       var keys = Object.keys(asset || {});
       for (var i = 0; i < keys.length; i++){
         var k = keys[i];
-        var kk = k.replace(/\s+/g, ""); // 공백 제거
+        var kk = k.replace(/\s+/g, "");
         var hasLandWord = (kk.indexOf("대지") !== -1) || (kk.indexOf("토지") !== -1);
         var hasArea = (kk.indexOf("면적") !== -1);
         var hasPyeong = (kk.indexOf("평") !== -1) || (kk.indexOf("(평") !== -1);
@@ -243,7 +335,7 @@
     var borrowerFilter = "";
 
     // -------------------------
-    // InfoWindow 순서 (대지면적(평) 표시)
+    // InfoWindow 순서
     // -------------------------
     var INFO_FIELDS = [
       { key: "Pool", label: "Pool" },
@@ -260,20 +352,15 @@
       { key: "근저당설정순위", label: "근저당설정순위" },
       { key: "근저당권설정액", label: "근저당권설정액", fmt: "comma" },
 
-      // ✅ 여기! 토지면적이 아니라 "대지면적(평)"로 표시
       { key: "__land_area", label: "대지면적(평)", fmt: "pyeong", pick: function(a){ return resolveLandAreaPyeong(a); } },
-
       { key: "__bldg_area", label: "건물면적(평)", fmt: "pyeong", pick: function(a){ return resolveBldgAreaPyeong(a); } },
 
       { key: "__land_appraisal", label: "감정평가액_토지", fmt: "comma",
         pick: function(a){ return pickAny(a, ["감정평가액_토지","감정평가액-토지","감정평가액-대지","토지","감정평가액-대지(토지)"]); } },
-
       { key: "__bldg_appraisal", label: "감정평가액_건물", fmt: "comma",
         pick: function(a){ return pickAny(a, ["감정평가액_건물","감정평가액-건물","건물"]); } },
-
       { key: "__mach_appraisal", label: "감정평가액_기계기구", fmt: "comma",
         pick: function(a){ return pickAny(a, ["감정평가액_기계기구","감정평가액-기계기구","기계기구"]); } },
-
       { key: "__extra_appraisal", label: "감정평가액_제시외", fmt: "comma",
         pick: function(a){ return pickAny(a, ["감정평가액_제시외","감정평가액-제시외","제시외"]); } },
 
@@ -601,6 +688,7 @@
     }
   </script>
 
+  <!-- 🔑 YOUR_JS_API_KEY 를 실제 Google Maps JavaScript API 키로 교체 -->
   <script
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCys3BT1to00AEaF0ZEFXDFDBgod9uRinw&callback=initMap"
     async defer
