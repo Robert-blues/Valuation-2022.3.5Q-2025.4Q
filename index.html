@@ -9,6 +9,7 @@
 
     /* =========================
        🔐 Login Overlay
+       ✅ ID/PW input 높이/크기 통일(추천 해결 반영)
     ========================= */
     #login-overlay{
       position: fixed;
@@ -33,12 +34,14 @@
     }
     .login-box input{
       width: 100%;
+      box-sizing: border-box;  /* ✅ padding/border 포함해 동일 폭 */
+      height: 42px;            /* ✅ 핵심: ID/PW 동일 높이 고정 */
       padding: 10px 12px;
       margin-bottom: 10px;
       font-size: 14px;
+      line-height: 20px;       /* ✅ 렌더링 차이 최소화 */
       border: 1px solid #ccc;
       border-radius: 6px;
-      box-sizing: border-box;
     }
     .login-box button{
       width: 100%;
@@ -143,14 +146,14 @@
         <h3>차주명 검색</h3>
         <input id="borrower-input" type="text" placeholder="차주명 입력 (부분검색)" />
         <button id="borrower-btn">차주명으로 필터</button>
-        <p class="mini-help">차주명에 입력값이 포함된 자산만 표시</p>
+        <p class="mini-help">차주명에 입력값이 포함된 자산만 표시함</p>
       </div>
 
       <div class="section">
         <h3>Disco 주소 검색</h3>
         <input id="disco-input" type="text" placeholder="지번 또는 주소 입력" />
         <button id="disco-btn">Disco에서 검색하기 (복사 + 새탭)</button>
-        <p class="mini-help">버튼 클릭 시 입력값이 자동으로 클립보드에 복사 후 disco.re 검색이 새 탭에서 열림</p>
+        <p class="mini-help">버튼 클릭 시 입력값이 자동으로 클립보드에 복사되고, disco.re 검색이 새 탭에서 열림</p>
       </div>
 
       <div class="section">
@@ -198,7 +201,6 @@
       if (btn) btn.addEventListener("click", doLogin);
 
       document.addEventListener("keydown", function(e){
-        // 로그인 오버레이가 떠 있을 때만 Enter 동작
         var overlay = document.getElementById("login-overlay");
         if (!overlay || overlay.style.display === "none") return;
         if (e.key === "Enter") doLogin();
@@ -261,7 +263,7 @@
         "대지면적",
         "대지면젹(평)",
         "대지면젹",
-        "토지면적(평)",    // 일부 파일 혼재 대비
+        "토지면적(평)",
         "토지면젹(평)",
         "토지면적",
         "토지면젹"
