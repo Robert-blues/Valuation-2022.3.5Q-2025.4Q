@@ -8,7 +8,7 @@
     html, body { margin:0; padding:0; height:100%; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 
     /* =========================
-       🔐 Login Overlay (배경 이미지 적용)
+       🔐 Login Overlay
     ========================= */
     #login-overlay{
       position: fixed;
@@ -66,7 +66,7 @@
     .login-note{ margin: 10px 0 0 0; font-size: 12px; color: #444; opacity: 0.95; }
 
     /* =========================
-       🗺️ Map Layout
+       🗺️ Layout
     ========================= */
     #map { position:absolute; top:0; left:0; right:300px; bottom:0; }
     #sidebar {
@@ -119,7 +119,7 @@
 </head>
 
 <body>
-  <!-- 🔐 로그인 오버레이 -->
+  <!-- 🔐 로그인 -->
   <div id="login-overlay">
     <div class="login-box">
       <h2>KFNI IB Portfolio Valuation Track</h2>
@@ -130,7 +130,7 @@
     </div>
   </div>
 
-  <!-- ✅ 로그인 성공 후 보여줄 앱 -->
+  <!-- 앱 -->
   <div id="app" style="display:none;">
     <div id="map"></div>
 
@@ -143,7 +143,7 @@
 
       <div class="section">
         <h3>지번 / 주소 검색</h3>
-        <input id="search-input" type="text" placeholder="예: 상세 지번 및 건물명 등 입력 가능" />
+        <input id="search-input" type="text" placeholder="예: 경기도 안산시 상록구 본오동 730-2" />
         <button id="search-btn">현재 지도에서 검색</button>
         <p class="mini-help">입력한 주소/지번을 지도에서 찾아 반경(1km)을 표시하고 해당 위치로 이동합니다.</p>
       </div>
@@ -153,7 +153,8 @@
         <input id="borrower-input" type="text" placeholder="차주명 입력 (부분검색)" />
         <button id="borrower-btn">차주명 위치로 이동</button>
         <p class="mini-help">
-          ✅ 결과가 1건이면 반경(1km)로 확대, 2건 이상이면 해당 마커들이 모두 보이도록 화면에 맞춥니다.
+          ✅ 1건이면 1km 원 표시 + 확대<br/>
+          ✅ 2건 이상이면 <b>각 마커마다 1km 원</b>을 모두 표시하고, 해당 마커를 <b>하이라이트</b>합니다.
         </p>
       </div>
 
@@ -190,7 +191,7 @@
 
   <script>
     /* =========================
-       🔐 Login Gate (Front-end only)
+       🔐 Login
     ========================= */
     function doLogin() {
       var id = (document.getElementById("login-id").value || "").trim();
@@ -296,6 +297,13 @@
       return "";
     }
 
+    function showToast(msg){
+      var el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      setTimeout(function(){ el.classList.remove("show"); }, 1500);
+    }
+
     // -------------------------
     // Pool 아이콘
     // -------------------------
@@ -318,59 +326,20 @@
       return POOL_CSS_COLORS[idx];
     }
 
+    // ✅ 하이라이트 아이콘(눈에 띄게)
+    function getHighlightIconUrl(){
+      return "https://maps.google.com/mapfiles/ms/icons/white-dot.png";
+    }
+
     // -------------------------
     // 전역 상태
     // -------------------------
     var map, geocoder;
-    var searchCircle = null;     // 주소 검색 원
-    var borrowerCircle = null;   // 차주명 검색 원
-    var markers = []; // { marker, typeKey, poolKey, borrowerName, asset }
+    var searchCircle = null;        // 주소 검색 원
+    var borrowerCircles = [];       // ✅ 차주 검색 원들(여러 개)
+    var markers = [];               // { marker, typeKey, poolKey, borrowerName, asset, baseIconUrl }
     var typeVisibility = {};
     var poolVisibility = {};
-    var borrowerQuery = "";      // ✅ “필터”가 아니라 “검색/이동” 용도로만 씀
-
-    // ✅ 1km 포커싱용
-    function focusByCircle(centerLatLng, radiusMeters, which){
-      if (!centerLatLng) return;
-      if (which === "borrower") {
-        if (borrowerCircle) borrowerCircle.setMap(null);
-        borrowerCircle = new google.maps.Circle({
-          map: map,
-          center: centerLatLng,
-          radius: radiusMeters || 1000,
-          fillColor: "#34A853",
-          fillOpacity: 0.12,
-          strokeColor: "#34A853",
-          strokeOpacity: 0.9,
-          strokeWeight: 1
-        });
-        map.fitBounds(borrowerCircle.getBounds());
-      } else {
-        if (searchCircle) searchCircle.setMap(null);
-        searchCircle = new google.maps.Circle({
-          map: map,
-          center: centerLatLng,
-          radius: radiusMeters || 1000,
-          fillColor: "#4285F4",
-          fillOpacity: 0.15,
-          strokeColor: "#4285F4",
-          strokeOpacity: 0.85,
-          strokeWeight: 1
-        });
-        map.fitBounds(searchCircle.getBounds());
-      }
-    }
-
-    // ✅ 보이는 마커들 기준 FitBounds
-    function fitBoundsToMarkers(markerList){
-      var bounds = new google.maps.LatLngBounds();
-      var any = false;
-      for (var i = 0; i < markerList.length; i++){
-        bounds.extend(markerList[i].getPosition());
-        any = true;
-      }
-      if (any) map.fitBounds(bounds);
-    }
 
     // -------------------------
     // InfoWindow 순서
@@ -433,7 +402,7 @@
       return await res.json();
     }
 
-    // ✅ “필터 가시성”은 자산유형/Pool만 반영 (차주명은 숨기지 않음!)
+    // ✅ 자산유형/Pool 필터만 반영 (차주는 숨기지 않음)
     function updateMarkerVisibility(){
       for (var i = 0; i < markers.length; i++){
         var obj = markers[i];
@@ -454,6 +423,73 @@
         }
       }
       if (any) map.fitBounds(bounds);
+    }
+
+    function clearBorrowerHighlightsAndCircles(){
+      // 원 제거
+      for (var i = 0; i < borrowerCircles.length; i++){
+        borrowerCircles[i].setMap(null);
+      }
+      borrowerCircles = [];
+
+      // 아이콘 복구
+      for (var j = 0; j < markers.length; j++){
+        markers[j].marker.setIcon(markers[j].baseIconUrl);
+      }
+    }
+
+    // ✅ 차주명 검색: 1개면 1km + 주변 유지 / 2개 이상이면 각 마커 1km 원 + 하이라이트 + 모두 보이게
+    function applyBorrowerSearch(){
+      var input = document.getElementById("borrower-input");
+      var q = (input.value || "").trim().toLowerCase();
+
+      // 초기화
+      clearBorrowerHighlightsAndCircles();
+
+      if (!q) return;
+
+      // 현재 "보이는 상태(자산유형/Pool 필터 반영)"에서만 매칭
+      var matched = [];
+      for (var i = 0; i < markers.length; i++){
+        var obj = markers[i];
+        if (!obj.marker.getVisible()) continue;
+        var b = (obj.borrowerName || "").toLowerCase();
+        if (b.indexOf(q) !== -1){
+          matched.push(obj);
+        }
+      }
+
+      if (matched.length === 0){
+        alert("해당 차주명으로 조회되는 자산이 없습니다. (현재 필터 조건 기준)");
+        return;
+      }
+
+      // ✅ 하이라이트 + 각 마커 1km 원
+      for (var k = 0; k < matched.length; k++){
+        var mo = matched[k];
+        mo.marker.setIcon(getHighlightIconUrl());
+
+        var circle = new google.maps.Circle({
+          map: map,
+          center: mo.marker.getPosition(),
+          radius: 1000,
+          fillColor: "#34A853",
+          fillOpacity: 0.10,
+          strokeColor: "#34A853",
+          strokeOpacity: 0.85,
+          strokeWeight: 1
+        });
+        borrowerCircles.push(circle);
+      }
+
+      // ✅ 화면 맞추기:
+      // - 1개면 그 원 bounds
+      // - 2개 이상이면 “원까지 포함”해서 모두 보이게
+      var bounds = new google.maps.LatLngBounds();
+      for (var c = 0; c < borrowerCircles.length; c++){
+        bounds.union(borrowerCircles[c].getBounds());
+      }
+      map.fitBounds(bounds);
     }
 
     function renderFilterList(containerId, counts, visibilityMap, colorFn, dataAttrName){
@@ -501,6 +537,9 @@
           visibilityMap[k] = this.checked;
           updateMarkerVisibility();
           fitMapToVisibleMarkers();
+
+          // ✅ 필터 바뀌면 차주 하이라이트/원은 비우는 게 안전
+          clearBorrowerHighlightsAndCircles();
         });
       }
     }
@@ -533,16 +572,10 @@
       }
       updateMarkerVisibility();
       fitMapToVisibleMarkers();
+      clearBorrowerHighlightsAndCircles();
     }
 
-    function showToast(msg){
-      var el = document.getElementById("toast");
-      el.textContent = msg;
-      el.classList.add("show");
-      setTimeout(function(){ el.classList.remove("show"); }, 1500);
-    }
-
-    // ---------- 지번/주소 검색 ----------
+    // ---------- 주소 검색 ----------
     function setupSearchBox(){
       var input = document.getElementById("search-input");
       var btn = document.getElementById("search-btn");
@@ -555,7 +588,20 @@
         geocoder.geocode({ address: q, region: "kr" }, function(results, status){
           if (status === "OK" && results && results.length){
             var loc = results[0].geometry.location;
-            focusByCircle(loc, 1000, "address");
+
+            if (searchCircle) searchCircle.setMap(null);
+            searchCircle = new google.maps.Circle({
+              map: map,
+              center: loc,
+              radius: 1000,
+              fillColor: "#4285F4",
+              fillOpacity: 0.15,
+              strokeColor: "#4285F4",
+              strokeOpacity: 0.85,
+              strokeWeight: 1
+            });
+
+            map.fitBounds(searchCircle.getBounds());
           } else {
             alert("해당 주소를 찾을 수 없습니다: " + status);
           }
@@ -566,51 +612,13 @@
       input.addEventListener("keyup", function(e){ if (e.key === "Enter") doSearch(); });
     }
 
-    // ✅ 차주명 검색: 숨기지 않고 “해당 차주 마커만” 찾은 뒤 이동/확대
     function setupBorrowerBox(){
       var input = document.getElementById("borrower-input");
       var btn = document.getElementById("borrower-btn");
       if (!input || !btn) return;
 
-      function apply(){
-        borrowerQuery = (input.value || "").trim().toLowerCase();
-
-        // 입력 비우면 차주 원 제거만 하고 종료
-        if (!borrowerQuery){
-          if (borrowerCircle) { borrowerCircle.setMap(null); borrowerCircle = null; }
-          return;
-        }
-
-        // ✅ 현재 "보이는 상태(자산유형/Pool 필터 반영)" 에서 차주명 매칭 마커 찾기
-        var matchedMarkers = [];
-        for (var i = 0; i < markers.length; i++){
-          var obj = markers[i];
-          if (!obj.marker.getVisible()) continue; // 자산유형/Pool에 의해 숨겨진건 제외
-          var b = (obj.borrowerName || "").toLowerCase();
-          if (b.indexOf(borrowerQuery) !== -1) {
-            matchedMarkers.push(obj.marker);
-          }
-        }
-
-        if (matchedMarkers.length === 0) {
-          alert("해당 차주명으로 조회되는 자산이 없습니다. (현재 필터 조건 기준)");
-          return;
-        }
-
-        // ✅ 1개면 1km 원으로 확대
-        if (matchedMarkers.length === 1) {
-          var p = matchedMarkers[0].getPosition();
-          focusByCircle(p, 1000, "borrower");
-          return;
-        }
-
-        // ✅ 2개 이상이면 해당 차주 마커들이 모두 보이도록 FitBounds
-        if (borrowerCircle) { borrowerCircle.setMap(null); borrowerCircle = null; }
-        fitBoundsToMarkers(matchedMarkers);
-      }
-
-      btn.addEventListener("click", apply);
-      input.addEventListener("keyup", function(e){ if (e.key === "Enter") apply(); });
+      btn.addEventListener("click", applyBorrowerSearch);
+      input.addEventListener("keyup", function(e){ if (e.key === "Enter") applyBorrowerSearch(); });
     }
 
     function setupDiscoSearchBox(){
@@ -656,9 +664,8 @@
         });
 
         if (searchCircle){ searchCircle.setMap(null); searchCircle = null; }
-        if (borrowerCircle){ borrowerCircle.setMap(null); borrowerCircle = null; }
 
-        borrowerQuery = "";
+        clearBorrowerHighlightsAndCircles();
         updateMarkerVisibility();
         fitMapToVisibleMarkers();
       });
@@ -701,10 +708,12 @@
 
         var infoHtml = buildInfoHtml(asset);
 
+        var baseIconUrl = getPoolIconUrl(poolKey);
+
         var marker = new google.maps.Marker({
           position: { lat: lat, lng: lng },
           map: map,
-          icon: getPoolIconUrl(poolKey),
+          icon: baseIconUrl,
           title: asset["대표지번_정제"] || asset["대표지번"] || ""
         });
 
@@ -713,7 +722,15 @@
           markerInstance.addListener("click", function(){ iw.open(map, markerInstance); });
         })(marker, infoHtml);
 
-        markers.push({ marker: marker, typeKey: typeKey, poolKey: poolKey, borrowerName: borrowerName, asset: asset });
+        markers.push({
+          marker: marker,
+          typeKey: typeKey,
+          poolKey: poolKey,
+          borrowerName: borrowerName,
+          asset: asset,
+          baseIconUrl: baseIconUrl
+        });
+
         bounds.extend(marker.getPosition());
       }
 
