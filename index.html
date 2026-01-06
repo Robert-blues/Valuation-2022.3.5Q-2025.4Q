@@ -8,55 +8,80 @@
     html, body { margin:0; padding:0; height:100%; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 
     /* =========================
-       🔐 Login Overlay
-       ✅ ID/PW input 높이/크기 통일(추천 해결 반영)
+       🔐 Login Overlay (배경 이미지 적용)
     ========================= */
     #login-overlay{
       position: fixed;
       inset: 0;
-      background: #f4f5f7;
+      /* ✅ 배경 이미지 + 어둡게 오버레이(흰 글씨/박스 가독성) */
+      background:
+        linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)),
+        url("data/login_bg.png");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 99999;
     }
+
     .login-box{
-      width: 360px;
-      background: #ffffff;
-      border-radius: 10px;
-      padding: 24px 28px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+      width: 380px;
+      border-radius: 12px;
+      padding: 26px 28px;
       text-align: center;
+
+      /* ✅ 유리(Glass) 느낌 */
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.55);
     }
+
     .login-box h2{
       margin: 0 0 16px 0;
       font-size: 18px;
+      letter-spacing: -0.2px;
     }
+
+    /* ✅ ID/PW 크기 완전 통일 */
     .login-box input{
       width: 100%;
-      box-sizing: border-box;  /* ✅ padding/border 포함해 동일 폭 */
-      height: 42px;            /* ✅ 핵심: ID/PW 동일 높이 고정 */
+      box-sizing: border-box;
+      height: 42px;
       padding: 10px 12px;
       margin-bottom: 10px;
       font-size: 14px;
-      line-height: 20px;       /* ✅ 렌더링 차이 최소화 */
-      border: 1px solid #ccc;
-      border-radius: 6px;
+      line-height: 20px;
+      border: 1px solid #cfcfcf;
+      border-radius: 8px;
+      outline: none;
+      background: rgba(255,255,255,0.92);
     }
+    .login-box input:focus{
+      border-color: #7aa7ff;
+      box-shadow: 0 0 0 3px rgba(122,167,255,0.25);
+    }
+
     .login-box button{
       width: 100%;
       padding: 10px;
       font-size: 14px;
-      border-radius: 6px;
+      border-radius: 8px;
       border: 1px solid #d0d0d0;
       background: #efefef;
       cursor: pointer;
     }
     .login-box button:hover{ background:#e6e6e6; }
+
     .login-note{
       margin: 10px 0 0 0;
       font-size: 12px;
-      color: #666;
+      color: #444;
+      opacity: 0.95;
     }
 
     /* =========================
@@ -116,11 +141,11 @@
   <!-- 🔐 로그인 오버레이 -->
   <div id="login-overlay">
     <div class="login-box">
-      <h2>KFNI IB Portfolio 평가 자산 Map</h2>
+      <h2>KFNI IB Portfolio Valuation Track</h2>
       <input id="login-id" type="text" placeholder="ID" autocomplete="username" />
       <input id="login-pw" type="password" placeholder="Password" autocomplete="current-password" />
       <button id="login-btn" type="button">로그인</button>
-      <p class="login-note">Designed by SIS</p>
+      <p class="login-note">투자금융팀 Portfolio 평가 자산 Map</p>
     </div>
   </div>
 
@@ -139,21 +164,21 @@
         <h3>지번 / 주소 검색</h3>
         <input id="search-input" type="text" placeholder="예: 경기도 안산시 상록구 본오동 730-2" />
         <button id="search-btn">현재 지도에서 검색</button>
-        <p class="mini-help">입력한 주소/지번을 지도에서 찾아 반경(1km)을 표시하고 해당 위치로 이동</p>
+        <p class="mini-help">입력한 주소/지번을 지도에서 찾아 반경(1km)을 표시하고 해당 위치로 이동합니다.</p>
       </div>
 
       <div class="section">
         <h3>차주명 검색</h3>
         <input id="borrower-input" type="text" placeholder="차주명 입력 (부분검색)" />
         <button id="borrower-btn">차주명으로 필터</button>
-        <p class="mini-help">차주명에 입력값이 포함된 자산만 표시함</p>
+        <p class="mini-help">차주명으로 필터 후, 해당 자산군 중심 기준 반경(1km)로 확대합니다.</p>
       </div>
 
       <div class="section">
         <h3>Disco 주소 검색</h3>
         <input id="disco-input" type="text" placeholder="지번 또는 주소 입력" />
         <button id="disco-btn">Disco에서 검색하기 (복사 + 새탭)</button>
-        <p class="mini-help">버튼 클릭 시 입력값이 자동으로 클립보드에 복사되고, disco.re 검색이 새 탭에서 열림</p>
+        <p class="mini-help">버튼 클릭 시 입력값이 자동으로 클립보드에 복사되고, disco.re 검색이 새 탭에서 열립니다.</p>
       </div>
 
       <div class="section">
@@ -330,11 +355,47 @@
     // -------------------------
     // 전역 상태
     // -------------------------
-    var map, geocoder, searchCircle;
+    var map, geocoder;
+    var searchCircle = null;   // 주소 검색 원
+    var borrowerCircle = null; // ✅ 차주명 검색 원(신규)
     var markers = [];
     var typeVisibility = {};
     var poolVisibility = {};
     var borrowerFilter = "";
+
+    // ✅ 특정 중심을 기준으로 반경 원을 만들고 그 범위로 확대하는 공용 함수
+    function focusByCircle(centerLatLng, radiusMeters, which){
+      if (!centerLatLng) return;
+
+      // 어떤 원을 쓸지 선택 (주소검색/차주검색)
+      if (which === "borrower") {
+        if (borrowerCircle) borrowerCircle.setMap(null);
+        borrowerCircle = new google.maps.Circle({
+          map: map,
+          center: centerLatLng,
+          radius: radiusMeters || 1000,
+          fillColor: "#34A853",
+          fillOpacity: 0.12,
+          strokeColor: "#34A853",
+          strokeOpacity: 0.9,
+          strokeWeight: 1
+        });
+        map.fitBounds(borrowerCircle.getBounds());
+      } else {
+        if (searchCircle) searchCircle.setMap(null);
+        searchCircle = new google.maps.Circle({
+          map: map,
+          center: centerLatLng,
+          radius: radiusMeters || 1000,
+          fillColor: "#4285F4",
+          fillOpacity: 0.15,
+          strokeColor: "#4285F4",
+          strokeOpacity: 0.85,
+          strokeWeight: 1
+        });
+        map.fitBounds(searchCircle.getBounds());
+      }
+    }
 
     // -------------------------
     // InfoWindow 순서
@@ -517,6 +578,7 @@
       setTimeout(function(){ el.classList.remove("show"); }, 1500);
     }
 
+    // ---------- 지번/주소 검색 ----------
     function setupSearchBox(){
       var input = document.getElementById("search-input");
       var btn = document.getElementById("search-btn");
@@ -529,14 +591,7 @@
         geocoder.geocode({ address: q, region: "kr" }, function(results, status){
           if (status === "OK" && results && results.length){
             var loc = results[0].geometry.location;
-            if (searchCircle) searchCircle.setMap(null);
-
-            searchCircle = new google.maps.Circle({
-              map: map, center: loc, radius: 1000,
-              fillColor: "#4285F4", fillOpacity: 0.15,
-              strokeColor: "#4285F4", strokeOpacity: 0.85, strokeWeight: 1
-            });
-            map.fitBounds(searchCircle.getBounds());
+            focusByCircle(loc, 1000, "address"); // ✅ 주소도 1km
           } else {
             alert("해당 주소를 찾을 수 없습니다: " + status);
           }
@@ -547,6 +602,7 @@
       input.addEventListener("keyup", function(e){ if (e.key === "Enter") doSearch(); });
     }
 
+    // ✅ 차주명 검색: “보이는 마커들의 중심” 기준 1km로 확대
     function setupBorrowerBox(){
       var input = document.getElementById("borrower-input");
       var btn = document.getElementById("borrower-btn");
@@ -555,7 +611,32 @@
       function apply(){
         borrowerFilter = (input.value || "").trim();
         updateMarkerVisibility();
-        fitMapToVisibleMarkers();
+
+        // 필터 비우면 원 제거 + 전체 fit
+        if (!borrowerFilter) {
+          if (borrowerCircle) { borrowerCircle.setMap(null); borrowerCircle = null; }
+          fitMapToVisibleMarkers();
+          return;
+        }
+
+        // ✅ 현재 보이는 마커의 중심점(평균) 계산
+        var sumLat = 0, sumLng = 0, cnt = 0;
+        for (var i = 0; i < markers.length; i++){
+          var m = markers[i].marker;
+          if (m.getVisible()){
+            var p = m.getPosition();
+            sumLat += p.lat();
+            sumLng += p.lng();
+            cnt += 1;
+          }
+        }
+
+        if (cnt > 0){
+          var center = new google.maps.LatLng(sumLat / cnt, sumLng / cnt);
+          focusByCircle(center, 1000, "borrower"); // ✅ 차주명도 1km
+        } else {
+          alert("해당 차주명으로 조회되는 자산이 없습니다.");
+        }
       }
 
       btn.addEventListener("click", apply);
@@ -605,7 +686,10 @@
           for (var i = 0; i < list.children.length; i++) list.children[i].style.display = "";
         });
 
+        // ✅ 원들 제거
         if (searchCircle){ searchCircle.setMap(null); searchCircle = null; }
+        if (borrowerCircle){ borrowerCircle.setMap(null); borrowerCircle = null; }
+
         updateMarkerVisibility();
         fitMapToVisibleMarkers();
       });
@@ -615,7 +699,9 @@
       var assets = await loadAssets();
 
       map = new google.maps.Map(document.getElementById("map"), {
-        zoom: 7, center: { lat: 36.5, lng: 127.8 }, clickableIcons: false
+        zoom: 7,
+        center: { lat: 36.5, lng: 127.8 },
+        clickableIcons: false
       });
 
       geocoder = new google.maps.Geocoder();
