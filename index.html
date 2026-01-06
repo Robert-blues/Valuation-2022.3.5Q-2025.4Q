@@ -7,9 +7,7 @@
   <style>
     html, body { margin:0; padding:0; height:100%; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 
-    /* =========================
-       🔐 Login Overlay
-    ========================= */
+    /* 🔐 Login Overlay */
     #login-overlay{
       position: fixed;
       inset: 0;
@@ -65,9 +63,7 @@
     .login-box button:hover{ background:#e6e6e6; }
     .login-note{ margin: 10px 0 0 0; font-size: 12px; color: #444; opacity: 0.95; }
 
-    /* =========================
-       🗺️ Layout
-    ========================= */
+    /* 🗺️ Layout */
     #map { position:absolute; top:0; left:0; right:300px; bottom:0; }
     #sidebar {
       position:absolute; top:0; right:0; bottom:0; width:300px;
@@ -122,7 +118,7 @@
   <!-- 🔐 로그인 -->
   <div id="login-overlay">
     <div class="login-box">
-      <h2>KFNI IB Portfolio Valuation Track</h2>
+      <h2>KFNI IB Portfolio Valuation Marker</h2>
       <input id="login-id" type="text" placeholder="ID" autocomplete="username" />
       <input id="login-pw" type="password" placeholder="Password" autocomplete="current-password" />
       <button id="login-btn" type="button">로그인</button>
@@ -153,7 +149,7 @@
         <input id="borrower-input" type="text" placeholder="차주명 입력 (부분검색)" />
         <button id="borrower-btn">차주명 위치로 이동</button>
         <p class="mini-help">
-          ✅ 해당 차주 마커만 <b>기본 핀 모양</b>으로 눈에 띄게 표시합니다.<br/>
+          ✅ 해당 차주 마커만 <b>기본 핀</b>으로 표시합니다.<br/>
           ✅ 각 마커 주변에 <b>2km 반경</b> 원을 표시합니다.
         </p>
       </div>
@@ -190,9 +186,7 @@
   </div>
 
   <script>
-    /* =========================
-       🔐 Login
-    ========================= */
+    /* 🔐 Login */
     function doLogin() {
       var id = (document.getElementById("login-id").value || "").trim();
       var pw = (document.getElementById("login-pw").value || "").trim();
@@ -213,9 +207,7 @@
       });
     });
 
-    // -------------------------
-    // 유틸
-    // -------------------------
+    /* 유틸 */
     function toNumber(v){
       if (v === null || v === undefined) return NaN;
       if (typeof v === "number") return v;
@@ -262,6 +254,7 @@
         "토지면적(평)","토지면젹(평)","토지면적","토지면젹"
       ]);
       if (v !== "") return v;
+
       var keys = Object.keys(asset || {});
       for (var i = 0; i < keys.length; i++){
         var k = keys[i];
@@ -279,6 +272,7 @@
     function resolveBldgAreaPyeong(asset){
       var v = pickAny(asset, ["건물면적(평)","건물면젹(평)","건물면적","건물면젹"]);
       if (v !== "") return v;
+
       var keys = Object.keys(asset || {});
       for (var i = 0; i < keys.length; i++){
         var k = keys[i];
@@ -298,9 +292,7 @@
       setTimeout(function(){ el.classList.remove("show"); }, 1500);
     }
 
-    // -------------------------
-    // Pool 아이콘
-    // -------------------------
+    /* Pool 아이콘 */
     var POOL_ICON_NAMES = ["red","blue","green","purple","yellow","ltblue","orange","pink"];
     var POOL_CSS_COLORS = ["#e74c3c","#3498db","#2ecc71","#9b59b6","#f1c40f","#1abc9c","#e67e22","#fd79a8"];
     var poolIndexMap = {};
@@ -320,7 +312,7 @@
       return POOL_CSS_COLORS[idx];
     }
 
-    // ✅ 차주 하이라이트는 “기본 핀(기본 marker)”로: icon을 null로 주면 기본 핀으로 복귀
+    /* 차주 하이라이트: 기본 핀 (icon=null) */
     function setMarkerToDefaultPin(marker){
       marker.setIcon(null);
       marker.setZIndex(google.maps.Marker.MAX_ZINDEX + 1);
@@ -330,20 +322,16 @@
       marker.setZIndex(undefined);
     }
 
-    // -------------------------
-    // 전역 상태
-    // -------------------------
+    /* 전역 */
     var map, geocoder;
-    var searchCircle = null;      // 주소 검색 원(1km)
-    var borrowerCircles = [];     // 차주 검색 원(2km, 여러 개)
-    var markers = [];             // { marker, typeKey, poolKey, borrowerName, asset, baseIconUrl, infoWindow }
+    var searchCircle = null;    // 주소 검색 1km
+    var borrowerCircles = [];   // 차주 검색 2km 여러개
+    var markers = [];           // { marker, typeKey, poolKey, borrowerName, asset, baseIconUrl, infoWindow }
     var typeVisibility = {};
     var poolVisibility = {};
     var lastOpenInfoWindow = null;
 
-    // -------------------------
-    // InfoWindow 순서
-    // -------------------------
+    /* InfoWindow 순서 */
     var INFO_FIELDS = [
       { key: "Pool", label: "Pool" },
       { key: "대표지번", label: "대표지번" },
@@ -402,7 +390,6 @@
       return await res.json();
     }
 
-    // ✅ 필터 적용(차주 제외)
     function updateMarkerVisibility(){
       for (var i = 0; i < markers.length; i++){
         var obj = markers[i];
@@ -426,37 +413,28 @@
     }
 
     function clearBorrowerCirclesAndHighlight(){
-      // 원 제거
       for (var i = 0; i < borrowerCircles.length; i++){
         borrowerCircles[i].setMap(null);
       }
       borrowerCircles = [];
-
-      // 아이콘 복구(기본 Pool-dot으로)
       for (var j = 0; j < markers.length; j++){
         restoreMarkerIcon(markers[j].marker, markers[j].baseIconUrl);
       }
     }
 
-    // ✅ 차주명 검색: 해당 차주 “마커는 확실히 보이게(기본 핀)” + 각 마커 2km 원 + bounds는 원 포함
     function applyBorrowerSearch(){
       var input = document.getElementById("borrower-input");
       var q = (input.value || "").trim().toLowerCase();
 
-      // 기존 하이라이트/원 제거
       clearBorrowerCirclesAndHighlight();
-
       if (!q) return;
 
-      // 현재 '보이는 상태(자산유형/Pool 필터 반영)'에서만 매칭
       var matched = [];
       for (var i = 0; i < markers.length; i++){
         var obj = markers[i];
         if (!obj.marker.getVisible()) continue;
         var b = (obj.borrowerName || "").toLowerCase();
-        if (b.indexOf(q) !== -1){
-          matched.push(obj);
-        }
+        if (b.indexOf(q) !== -1) matched.push(obj);
       }
 
       if (matched.length === 0){
@@ -464,14 +442,10 @@
         return;
       }
 
-      // ✅ 매칭 마커: 기본 핀으로 바꾸고, 2km 원 생성
       for (var k = 0; k < matched.length; k++){
         var mo = matched[k];
-
-        // (1) 마커를 기본 핀으로 변경해서 확 띄우기
         setMarkerToDefaultPin(mo.marker);
 
-        // (2) 각 마커 2km 원
         var circle = new google.maps.Circle({
           map: map,
           center: mo.marker.getPosition(),
@@ -485,16 +459,12 @@
         borrowerCircles.push(circle);
       }
 
-      // ✅ 화면은 “원들의 bounds”를 union해서 다 보이게
       var bounds = new google.maps.LatLngBounds();
       for (var c = 0; c < borrowerCircles.length; c++){
         bounds.union(borrowerCircles[c].getBounds());
       }
       map.fitBounds(bounds);
 
-      // ✅ InfoWindow “지워지지 않게”:
-      // - 기존에 열려있던 InfoWindow가 있으면 그대로 둠 (강제 close 안 함)
-      // - 추가로, 차주 검색 결과의 첫 번째 마커 InfoWindow를 자동 오픈(원하면 유지 가능)
       if (matched[0] && matched[0].infoWindow){
         matched[0].infoWindow.open(map, matched[0].marker);
         lastOpenInfoWindow = matched[0].infoWindow;
@@ -546,8 +516,6 @@
           visibilityMap[k] = this.checked;
           updateMarkerVisibility();
           fitMapToVisibleMarkers();
-
-          // 필터 변경 시 차주 하이라이트/원 초기화(혼선 방지)
           clearBorrowerCirclesAndHighlight();
         });
       }
@@ -584,7 +552,6 @@
       clearBorrowerCirclesAndHighlight();
     }
 
-    // ---------- 주소 검색 ----------
     function setupSearchBox(){
       var input = document.getElementById("search-input");
       var btn = document.getElementById("search-btn");
@@ -674,7 +641,6 @@
 
         if (searchCircle){ searchCircle.setMap(null); searchCircle = null; }
         clearBorrowerCirclesAndHighlight();
-
         updateMarkerVisibility();
         fitMapToVisibleMarkers();
       });
@@ -727,10 +693,16 @@
 
         var iw = new google.maps.InfoWindow({ content: infoHtml });
 
-        marker.addListener("click", function(){
-          iw.open(map, marker);
-          lastOpenInfoWindow = iw;
-        });
+        // ✅✅✅ 핵심 수정: marker/iw를 “각각 고정”해서 클릭 시 자기 정보만 뜨도록
+        (function(m, info){
+          m.addListener("click", function(){
+            // 다른 InfoWindow 닫고 싶으면 아래 2줄 사용 (원치 않으면 삭제 가능)
+            if (lastOpenInfoWindow) lastOpenInfoWindow.close();
+
+            info.open(map, m);
+            lastOpenInfoWindow = info;
+          });
+        })(marker, iw);
 
         markers.push({
           marker: marker,
@@ -773,7 +745,7 @@
     }
   </script>
 
-  <!-- 🔑 YOUR_JS_API_KEY 를 실제 Google Maps JavaScript API 키로 교체 -->
+  <!-- 🔑 실제 키로 교체 -->
   <script
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCys3BT1to00AEaF0ZEFXDFDBgod9uRinw&callback=initMap"
     async defer
