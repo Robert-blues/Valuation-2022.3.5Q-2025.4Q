@@ -356,7 +356,19 @@
         pick: function(a){ return pickAny(a, ["감정평가액_기계기구","감정평가액-기계기구","기계기구"]); } },
       { key: "__extra_appraisal", label: "감정평가액_제시외", fmt: "comma",
         pick: function(a){ return pickAny(a, ["감정평가액_제시외","감정평가액-제시외","제시외"]); } },
-      { key: "합계", label: "감정평가액 합계", fmt: "comma" },
+
+      /* ✅✅✅ 여기부터 핵심 수정 1) 합계(감정평가액 합계) : 여러 키 후보를 허용 */
+      { key: "__total_appraisal", label: "감정평가액 합계", fmt: "comma",
+        pick: function(a){
+          return pickAny(a, [
+            "감정평가액 합계",
+            "감정평가액-합계",
+            "감정평가액_합계",
+            "합계"
+          ]);
+        }
+      },
+
       { key: "1안 평당가액(토지+건물)", label: "1안 평당가액(토지+건물)", fmt: "comma" },
       { key: "2안 평당가액(토지+건물)", label: "2안 평당가액(토지+건물)", fmt: "comma" },
       { key: "관할법원", label: "관할법원" },
@@ -367,7 +379,13 @@
       { key: "비고", label: "비고" },
       { key: "회생법원", label: "회생법원" },
       { key: "회생사건번호", label: "회생사건번호" },
-      { key: "회생진행상황", label: "회생진행상황" }
+
+      /* ✅✅✅ 핵심 수정 2) 회생진행현황/상황 모두 대응 */
+      { key: "__rehab_status", label: "회생진행현황",
+        pick: function(a){
+          return pickAny(a, ["회생진행현황", "회생진행상황", "회생진행현황 ", "회생진행상황 "]);
+        }
+      }
     ];
 
     function buildInfoHtml(asset){
@@ -693,12 +711,9 @@
 
         var iw = new google.maps.InfoWindow({ content: infoHtml });
 
-        // ✅✅✅ 핵심 수정: marker/iw를 “각각 고정”해서 클릭 시 자기 정보만 뜨도록
         (function(m, info){
           m.addListener("click", function(){
-            // 다른 InfoWindow 닫고 싶으면 아래 2줄 사용 (원치 않으면 삭제 가능)
             if (lastOpenInfoWindow) lastOpenInfoWindow.close();
-
             info.open(map, m);
             lastOpenInfoWindow = info;
           });
